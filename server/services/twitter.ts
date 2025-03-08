@@ -11,7 +11,8 @@ function getTwitterClient(): TwitterApi {
       accessSecret: "05bENxVnuqRIVrrfOeWfKM9VQMsJzPlOiILMORvUGhWr9",
     });
 
-    return client.readWrite;
+    // Get the instance that will work with v2 API
+    return client.v2;
   } catch (error: any) {
     log(`Failed to initialize Twitter client: ${error.message}`, 'twitter');
     throw new Error(`Twitter client initialization failed: ${error.message}`);
@@ -25,7 +26,7 @@ export async function postTweet(text: string): Promise<void> {
 
     // Try to verify credentials first
     try {
-      await client.v2.me();
+      await client.me();
       log(`Verified Twitter credentials`, 'twitter');
     } catch (verifyError: any) {
       log(`Failed to verify credentials: ${verifyError.message}`, 'twitter');
@@ -36,7 +37,7 @@ export async function postTweet(text: string): Promise<void> {
     }
 
     // Post the tweet using v2 API
-    await client.v2.tweet(text);
+    await client.tweet(text);
     log(`Successfully posted tweet: ${text.substring(0, 50)}...`, 'twitter');
   } catch (error: any) {
     const errorMessage = error.message || error.toString();
