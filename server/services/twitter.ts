@@ -15,7 +15,7 @@ function getTwitterClient() {
       appSecret: process.env.TWITTER_API_SECRET,
       accessToken: process.env.TWITTER_ACCESS_TOKEN,
       accessSecret: process.env.TWITTER_ACCESS_SECRET,
-    });
+    }).readWrite;
   } catch (error: any) {
     log(`Failed to initialize Twitter client: ${error.message}`, 'twitter');
     throw new Error(`Twitter client initialization failed: ${error.message}`);
@@ -27,7 +27,7 @@ export async function postTweet(text: string): Promise<void> {
     const client = getTwitterClient();
     log(`Attempting to post tweet with text length: ${text.length}`, 'twitter');
 
-    // Post tweet using v2 API directly
+    // Post the tweet
     const tweet = await client.v2.tweet({
       text: text,
     });
