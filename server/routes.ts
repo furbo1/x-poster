@@ -26,6 +26,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       log(`Test posting tweet for listing: ${post.name}`, "twitter");
 
+      // Clear any previous errors before attempting new post
+      await storage.clearErrors();
+
       try {
         await postTweet(post.promoText);
         await storage.markAsPosted(post.id);
@@ -42,7 +45,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           log(`Error details: ${JSON.stringify(twitterError.data)}`, "twitter");
         }
 
-        // Mark the post as failed
+        // Mark only this specific post as failed
         await storage.markAsFailed(post.id, errorMessage);
 
         res.status(500).json({ 

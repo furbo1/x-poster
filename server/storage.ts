@@ -9,6 +9,7 @@ export interface IStorage {
   markAsPosted(id: number): Promise<void>;
   markAsFailed(id: number, error: string): Promise<void>;
   initializeFromJson(filePath: string): Promise<void>;
+  clearErrors(): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -57,6 +58,19 @@ export class MemStorage implements IStorage {
       });
     } else {
       log(`Post ${id} not found for marking as failed`, 'storage');
+    }
+  }
+
+  // Clear error state from all posts before attempting a new post
+  async clearErrors(): Promise<void> {
+    log('Clearing error states from all posts', 'storage');
+    for (const [id, post] of this.posts.entries()) {
+      if (post.error) {
+        this.posts.set(id, {
+          ...post,
+          error: null,
+        });
+      }
     }
   }
 
