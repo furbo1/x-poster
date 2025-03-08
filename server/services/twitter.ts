@@ -32,8 +32,8 @@ function getTwitterClient() {
       accessSecret: accessSecret,
     });
 
-    // Get the client with read-write access
-    return client.readWrite;
+    // Get the client with read-write access and return
+    return client.v2.readWrite;
   } catch (error: any) {
     const errorMessage = error.message || "Unknown error occurred";
     log(`Failed to initialize Twitter client: ${errorMessage}`, 'twitter');
@@ -46,14 +46,14 @@ export async function postTweet(text: string): Promise<void> {
     const client = getTwitterClient();
     log(`Attempting to post tweet with text length: ${text.length}`, 'twitter');
 
-    // Post tweet using v1.1 API for better compatibility
-    const tweet = await client.v1.tweet(text);
+    // Post tweet using v2 API
+    const tweet = await client.tweet(text);
 
-    if (!tweet?.id_str) {
+    if (!tweet?.data?.id) {
       throw new Error("Failed to get tweet ID from response");
     }
 
-    log(`Successfully posted tweet with ID: ${tweet.id_str}`, 'twitter');
+    log(`Successfully posted tweet with ID: ${tweet.data.id}`, 'twitter');
   } catch (error: any) {
     log(`Failed to post tweet: ${error.message}`, 'twitter');
     if (error.data) {
@@ -71,15 +71,15 @@ export async function postTweet(text: string): Promise<void> {
   }
 }
 
-// New verification function
+// Verification function
 export async function verifyTwitterCredentials(): Promise<boolean> {
   try {
     const client = getTwitterClient();
     log('Attempting to verify Twitter credentials...', 'twitter');
 
-    // Try to get user information as a test
-    const user = await client.v1.verifyCredentials();
-    log(`Successfully verified credentials for user: ${user.screen_name}`, 'twitter');
+    // Use v2 endpoint for verification
+    const user = await client.currentUser();
+    log(`Successfully verified credentials for user: ${user.data.username}`, 'twitter');
     return true;
   } catch (error: any) {
     log(`Credential verification failed: ${error.message}`, 'twitter');
