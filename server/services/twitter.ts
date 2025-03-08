@@ -3,7 +3,7 @@ import { log } from "../vite";
 
 function getTwitterClient() {
   try {
-    // Initialize with OAuth 1.0a credentials for elevated access
+    // Initialize with OAuth 1.0a credentials
     const client = new TwitterApi({
       appKey: "AjQwmmc7fqs8KdMgc8KS0hONy",
       appSecret: "ARso268mRpDRVFZMH5AyDmmo3xirKOQBY8BP8El1OgxP7DbzsJ",
@@ -11,17 +11,7 @@ function getTwitterClient() {
       accessSecret: "05bENxVnuqRIVrrfOeWfKM9VQMsJzPlOiILMORvUGhWr9",
     });
 
-    // Get the client with read-write access
-    const rwClient = client.readWrite;
-
-    // Enable automatic rate limit handling
-    rwClient.rateLimitPlugin.removeAllListeners();
-    rwClient.rateLimitPlugin.onRateLimitError(async (error) => {
-      log(`Rate limit exceeded, waiting ${error.rateLimit.reset} seconds`, 'twitter');
-      await new Promise(resolve => setTimeout(resolve, error.rateLimit.reset * 1000));
-    });
-
-    return rwClient;
+    return client;
   } catch (error: any) {
     log(`Failed to initialize Twitter client: ${error.message}`, 'twitter');
     throw new Error(`Twitter client initialization failed: ${error.message}`);
@@ -35,14 +25,17 @@ export async function postTweet(text: string): Promise<void> {
 
     // Try to verify credentials first
     try {
-      const user = await client.currentUser();
-      log(`Verified Twitter credentials for user: ${user.username}`, 'twitter');
+      const user = await client.v1.verifyCredentials();
+      log(`Verified Twitter credentials for user: ${user.screen_name}`, 'twitter');
     } catch (verifyError: any) {
       log(`Failed to verify credentials: ${verifyError.message}`, 'twitter');
+      if (verifyError.data) {
+        log(`Verification Error Details: ${JSON.stringify(verifyError.data)}`, 'twitter');
+      }
       throw verifyError;
     }
 
-    // Post tweet with v1.1 API for better compatibility
+    // Post tweet with v1.1 API
     const tweet = await client.v1.tweet(text);
 
     if (!tweet?.id_str) {
