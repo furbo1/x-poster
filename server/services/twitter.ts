@@ -1,9 +1,9 @@
 import { TwitterApi } from "twitter-api-v2";
 import { log } from "../vite";
 
-function getTwitterClient(): TwitterApi {
+function getTwitterClient() {
   try {
-    // Create the client with v2 API
+    // Initialize with OAuth 1.0a User Context
     const client = new TwitterApi({
       appKey: "AjQwmmc7fqs8KdMgc8KS0hONy",
       appSecret: "ARso268mRpDRVFZMH5AyDmmo3xirKOQBY8BP8El1OgxP7DbzsJ",
@@ -11,8 +11,9 @@ function getTwitterClient(): TwitterApi {
       accessSecret: "05bENxVnuqRIVrrfOeWfKM9VQMsJzPlOiILMORvUGhWr9",
     });
 
-    // Get the instance that will work with v2 API
-    return client.v2;
+    // Get the v2 instance with read-write permissions
+    const v2Client = client.v2;
+    return v2Client;
   } catch (error: any) {
     log(`Failed to initialize Twitter client: ${error.message}`, 'twitter');
     throw new Error(`Twitter client initialization failed: ${error.message}`);
@@ -24,20 +25,15 @@ export async function postTweet(text: string): Promise<void> {
     const client = getTwitterClient();
     log(`Attempting to post tweet with text length: ${text.length}`, 'twitter');
 
-    // Try to verify credentials first
-    try {
-      await client.me();
-      log(`Verified Twitter credentials`, 'twitter');
-    } catch (verifyError: any) {
-      log(`Failed to verify credentials: ${verifyError.message}`, 'twitter');
-      if (verifyError.data) {
-        log(`Verification Error Details: ${JSON.stringify(verifyError.data)}`, 'twitter');
-      }
-      throw verifyError;
+    // Post the tweet using v2 API endpoint
+    const response = await client.tweet({
+      text: text,
+    });
+
+    if (!response?.data?.id) {
+      throw new Error("Failed to get tweet ID from response");
     }
 
-    // Post the tweet using v2 API
-    await client.tweet(text);
     log(`Successfully posted tweet: ${text.substring(0, 50)}...`, 'twitter');
   } catch (error: any) {
     const errorMessage = error.message || error.toString();
