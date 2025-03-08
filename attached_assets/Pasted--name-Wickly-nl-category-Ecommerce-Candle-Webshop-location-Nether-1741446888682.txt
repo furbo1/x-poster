@@ -58,4 +58,5 @@
     "profit_margin": "65%",
     "revenue": "USD $103,720",
     "promo_text": "📢✨ ATTENTION #ECOMMERCE INVESTORS!\n✨ REVKINGZ: Car Gadgets Store!\n💵 $103K Revenue!\n💸 $5.6K/mo Profit!\n• 65% Margin & Organic Reach!\n• Perfect for Auto Niche!\n⚡️ GROWTH: Scale Ads & Products!\n🔥 ATTRACTIVE: 100K+ Subs & Low Costs!\nhttps://referral.flippa.com/dfrc8acusqcf?url=https://flippa.com/11680332"
-  },
+  }
+]
