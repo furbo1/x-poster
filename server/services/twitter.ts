@@ -9,7 +9,7 @@ function getTwitterClient() {
       throw new Error("Twitter credentials not found in environment variables");
     }
 
-    log(`Initializing Twitter client with API key: ${process.env.TWITTER_API_KEY.substring(0, 5)}...`, 'twitter');
+    log(`Using Twitter API key: ${process.env.TWITTER_API_KEY.substring(0, 5)}...`, 'twitter');
 
     // Create client with OAuth 1.0a user context
     const client = new TwitterApi({
@@ -32,18 +32,6 @@ export async function postTweet(text: string): Promise<void> {
   try {
     const client = getTwitterClient();
     log(`Attempting to post tweet with text length: ${text.length}`, 'twitter');
-
-    // Try to verify credentials first
-    try {
-      const user = await client.v1.verifyCredentials();
-      log(`Successfully verified Twitter credentials for user: ${user.screen_name}`, 'twitter');
-    } catch (verifyError: any) {
-      log(`Failed to verify credentials: ${verifyError.message}`, 'twitter');
-      if (verifyError.data) {
-        log(`Verification Error Details: ${JSON.stringify(verifyError.data, null, 2)}`, 'twitter');
-      }
-      throw verifyError;
-    }
 
     // Post tweet using v1.1 API for better compatibility
     const tweet = await client.v1.tweet(text);
