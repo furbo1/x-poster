@@ -18,14 +18,21 @@ function getTwitterClient(): TwitterApi {
   `, 'twitter');
 
   try {
+    // Create the client with the app-only credentials first
     const client = new TwitterApi({
+      appKey: credentials.appKey,
+      appSecret: credentials.appSecret,
+    });
+
+    // Create a client with user context
+    const userClient = new TwitterApi({
       appKey: credentials.appKey,
       appSecret: credentials.appSecret,
       accessToken: credentials.accessToken,
       accessSecret: credentials.accessSecret,
     });
 
-    return client;
+    return userClient;
   } catch (error: any) {
     log(`Failed to initialize Twitter client: ${error.message}`, 'twitter');
     throw new Error(`Twitter client initialization failed: ${error.message}`);
@@ -35,10 +42,22 @@ function getTwitterClient(): TwitterApi {
 export async function postTweet(text: string): Promise<void> {
   try {
     const client = getTwitterClient();
-    const v1Client = client.v1;  // Use v1 API for better compatibility
-
     log(`Attempting to post tweet with text length: ${text.length}`, 'twitter');
-    await v1Client.tweet(text);
+
+    // Try to verify credentials first
+    try {
+      const user = await client.v1.verifyCredentials();
+      log(`Verified Twitter credentials for user: ${user.screen_name}`, 'twitter');
+    } catch (verifyError: any) {
+      log(`Failed to verify credentials: ${verifyError.message}`, 'twitter');
+      if (verifyError.data) {
+        log(`Verification Error Details: ${JSON.stringify(verifyError.data)}`, 'twitter');
+      }
+      throw verifyError;
+    }
+
+    // Post the tweet using v1.1 API
+    await client.v1.tweet(text);
     log(`Successfully posted tweet: ${text.substring(0, 50)}...`, 'twitter');
   } catch (error: any) {
     const errorMessage = error.message || error.toString();
