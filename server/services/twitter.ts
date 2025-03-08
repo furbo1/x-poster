@@ -3,17 +3,12 @@ import { log } from "../vite";
 
 function getTwitterClient() {
   try {
-    // Initialize with OAuth 1.0a User Context
-    const client = new TwitterApi({
-      appKey: "AjQwmmc7fqs8KdMgc8KS0hONy",
-      appSecret: "ARso268mRpDRVFZMH5AyDmmo3xirKOQBY8BP8El1OgxP7DbzsJ",
-      accessToken: "1460679066672115714-elqvrB3Gi5XkdkhFrvNYx5jfjuuENP",
-      accessSecret: "05bENxVnuqRIVrrfOeWfKM9VQMsJzPlOiILMORvUGhWr9",
-    });
+    // Initialize with Bearer token for v2 API
+    const client = new TwitterApi(
+      "AAAAAAAAAAAAAAAAAAAAAAPyzQEAAAAAXuoZ6CEzW9MdQnbu4SKDA9RVrxo%3DIgeggnw6OvD1PKJxcq5kP6TWORRIf5wP9kuEfHz9cORHibThXH"
+    );
 
-    // Get the v2 instance with read-write permissions
-    const v2Client = client.v2;
-    return v2Client;
+    return client.v2;
   } catch (error: any) {
     log(`Failed to initialize Twitter client: ${error.message}`, 'twitter');
     throw new Error(`Twitter client initialization failed: ${error.message}`);
@@ -26,9 +21,7 @@ export async function postTweet(text: string): Promise<void> {
     log(`Attempting to post tweet with text length: ${text.length}`, 'twitter');
 
     // Post the tweet using v2 API endpoint
-    const response = await client.tweet({
-      text: text,
-    });
+    const response = await client.tweet(text);
 
     if (!response?.data?.id) {
       throw new Error("Failed to get tweet ID from response");
