@@ -1,0 +1,61 @@
+[
+  {
+    "name": "Wickly.nl",
+    "category": "Ecommerce - Candle Webshop",
+    "location": "Netherlands",
+    "site_age": "Not specified",
+    "monthly_profit": "USD $5,700",
+    "profit_margin": "42%",
+    "revenue": "USD $41,000",
+    "promo_text": "📢✨ ATTENTION #ECOMMERCE INVESTORS!\n✨ WICKLY.NL: Candle Webshop!\n💵 $41K Revenue!\n💸 $5.7K/mo Profit!\n• 42% Margin & Viral Product!\n• Perfect for Home Niche!\n⚡️ GROWTH: Scale Ads & Platforms!\n🔥 ATTRACTIVE: 4.5K Fans & High AOV!\nhttps://referral.flippa.com/dfrc8acusqcf?url=https://flippa.com/11881765"
+  },
+  {
+    "name": "Alpsland.shop",
+    "category": "Ecommerce - Sports and Outdoor",
+    "location": "Italy",
+    "site_age": "4 years",
+    "monthly_profit": "EUR €5,501",
+    "profit_margin": "33%",
+    "revenue": "EUR €197,436",
+    "promo_text": "📢✨ ATTENTION #ECOMMERCE INVESTORS!\n✨ ALPSLAND.SHOP: Alpine Store!\n💵 €197K Revenue!\n💸 €5.5K/mo Profit!\n• 33% Margin & Unique Items!\n• Perfect for Outdoor Niche!\n⚡️ GROWTH: Scale Markets & Range!\n🔥 ATTRACTIVE: Loyal Fans & Strong Brand!\nhttps://referral.flippa.com/dfrc8acusqcf?url=https://flippa.com/11853872"
+  },
+  {
+    "name": "Heartsrules.com",
+    "category": "Ecommerce - Education",
+    "location": "Italy",
+    "site_age": "1 year",
+    "monthly_profit": "USD $5,729",
+    "profit_margin": "44%",
+    "revenue": "USD $157,667",
+    "promo_text": "📢✨ ATTENTION #EDTECH INVESTORS!\n✨ HEART'S RULES: Video Course Store!\n💵 $157K Revenue!\n💸 $5.7K/mo Profit!\n• 44% Margin & Auto Sales!\n• Perfect for Edu Niche!\n⚡️ GROWTH: Scale Spanish & Consulting!\n🔥 ATTRACTIVE: 5K Clients & Shopify!\nhttps://referral.flippa.com/dfrc8acusqcf?url=https://flippa.com/11870483"
+  },
+  {
+    "name": "Cold Sense Official",
+    "category": "Ecommerce - Electronics",
+    "location": "France",
+    "site_age": "4 years",
+    "monthly_profit": "USD $5,713",
+    "profit_margin": "54%",
+    "revenue": "USD $95,636",
+    "promo_text": "📢✨ ATTENTION #ECOMMERCE INVESTORS!\n✨ COLD SENSE: AC Units Store!\n💵 $95K Revenue!\n💸 $5.7K/mo Profit!\n• 54% Margin & High AOV!\n• Perfect for Electronics Niche!\n⚡️ GROWTH: Scale Ads & Markets!\n🔥 ATTRACTIVE: Auto Ops & Loyal Base!\nhttps://referral.flippa.com/dfrc8acusqcf?url=https://flippa.com/10908295"
+  },
+  {
+    "name": "AimHighAlgo",
+    "category": "Service - Business",
+    "location": "MO, United States",
+    "site_age": "10 months",
+    "monthly_profit": "USD $5,697",
+    "profit_margin": "89%",
+    "revenue": "USD $44,600",
+    "promo_text": "📢✨ ATTENTION #SERVICE INVESTORS!\n✨ AIMHIGHALGO: AI Trading Solution!\n💵 $44K Revenue!\n💸 $5.6K/mo Profit!\n• 89% Margin & 700+ Community!\n• Perfect for Trading Niche!\n⚡️ GROWTH: Scale Markets & Ads!\n🔥 ATTRACTIVE: Auto Ops & Organic Reach!\nhttps://referral.flippa.com/dfrc8acusqcf?url=https://flippa.com/11849000"
+  },
+  {
+    "name": "Revkingz",
+    "category": "Ecommerce - Automotive",
+    "location": "FL, United States",
+    "site_age": "2 years",
+    "monthly_profit": "USD $5,655",
+    "profit_margin": "65%",
+    "revenue": "USD $103,720",
+    "promo_text": "📢✨ ATTENTION #ECOMMERCE INVESTORS!\n✨ REVKINGZ: Car Gadgets Store!\n💵 $103K Revenue!\n💸 $5.6K/mo Profit!\n• 65% Margin & Organic Reach!\n• Perfect for Auto Niche!\n⚡️ GROWTH: Scale Ads & Products!\n🔥 ATTRACTIVE: 100K+ Subs & Low Costs!\nhttps://referral.flippa.com/dfrc8acusqcf?url=https://flippa.com/11680332"
+  },
