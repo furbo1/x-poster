@@ -1,5 +1,6 @@
 import { TwitterApi } from "twitter-api-v2";
 import { log } from "../vite";
+import { testTwitterAuth } from "./test-twitter";
 
 function validateAndTrimCredential(value: string | undefined, name: string): string {
   if (!value || value.trim().length === 0) {
@@ -63,19 +64,6 @@ export async function postTweet(text: string): Promise<void> {
 }
 
 export async function verifyTwitterCredentials(): Promise<boolean> {
-  try {
-    const client = getTwitterClient();
-    log('Attempting to verify Twitter credentials...', 'twitter');
-
-    // Use v1.1 verifyCredentials endpoint
-    const user = await client.v1.verifyCredentials();
-    log(`Successfully verified credentials for user: ${user.screen_name}`, 'twitter');
-    return true;
-  } catch (error: any) {
-    log(`Credential verification failed: ${error.message}`, 'twitter');
-    if (error.data) {
-      log(`Verification Error Details: ${JSON.stringify(error.data, null, 2)}`, 'twitter');
-    }
-    return false;
-  }
+  log('Starting comprehensive Twitter credentials verification...', 'twitter');
+  return await testTwitterAuth();
 }
