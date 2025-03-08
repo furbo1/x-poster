@@ -42,6 +42,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           log(`Error details: ${JSON.stringify(twitterError.data)}`, "twitter");
         }
 
+        // Mark the post as failed
+        await storage.markAsFailed(post.id, errorMessage);
+
         res.status(500).json({ 
           message: errorMessage,
           details: twitterError.data,

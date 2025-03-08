@@ -19,7 +19,8 @@ function getTwitterClient() {
       accessSecret: process.env.TWITTER_ACCESS_SECRET,
     });
 
-    return client;
+    // Get the client with read-write access
+    return client.readWrite;
   } catch (error: any) {
     const errorMessage = error.message || "Unknown error occurred";
     log(`Failed to initialize Twitter client: ${errorMessage}`, 'twitter');
@@ -53,11 +54,18 @@ export async function postTweet(text: string): Promise<void> {
 
     log(`Successfully posted tweet with ID: ${tweet.id_str}`, 'twitter');
   } catch (error: any) {
-    const errorMessage = error.message || error.toString();
-    log(`Failed to post tweet: ${errorMessage}`, 'twitter');
+    log(`Failed to post tweet: ${error.message}`, 'twitter');
     if (error.data) {
       log(`Twitter API Error Details: ${JSON.stringify(error.data, null, 2)}`, 'twitter');
     }
-    throw new Error(`Failed to post tweet: ${errorMessage}`);
+
+    // Format error message based on Twitter API response
+    let errorMessage = error.message;
+    if (error.data?.errors?.length > 0) {
+      const apiError = error.data.errors[0];
+      errorMessage = `Twitter API Error ${apiError.code}: ${apiError.message}`;
+    }
+
+    throw new Error(errorMessage);
   }
 }

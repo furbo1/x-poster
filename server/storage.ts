@@ -33,21 +33,30 @@ export class MemStorage implements IStorage {
   async markAsPosted(id: number): Promise<void> {
     const post = this.posts.get(id);
     if (post) {
+      log(`Marking post ${id} as posted`, 'storage');
       this.posts.set(id, {
         ...post,
         posted: true,
         postedAt: new Date(),
+        error: null, // Clear any previous errors
       });
+    } else {
+      log(`Post ${id} not found for marking as posted`, 'storage');
     }
   }
 
   async markAsFailed(id: number, error: string): Promise<void> {
     const post = this.posts.get(id);
     if (post) {
+      log(`Marking post ${id} as failed: ${error}`, 'storage');
       this.posts.set(id, {
         ...post,
         error,
+        posted: false,
+        postedAt: null,
       });
+    } else {
+      log(`Post ${id} not found for marking as failed`, 'storage');
     }
   }
 
