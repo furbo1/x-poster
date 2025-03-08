@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Loader2, CheckCircle, XCircle, Send } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Copy, ExternalLink } from "lucide-react";
 import type { Post } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -15,27 +15,21 @@ export default function Home() {
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
-  const testPostMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/posts/test");
-      return response.json();
-    },
-    onSuccess: () => {
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
       toast({
         title: "Success",
-        description: "Tweet posted successfully!",
+        description: "Tweet copied to clipboard!",
       });
-      // Invalidate and refetch
-      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
-    },
-    onError: (error: Error) => {
+    } catch (err) {
       toast({
         title: "Error",
-        description: error.message,
+        description: "Failed to copy tweet text",
         variant: "destructive",
       });
-    },
-  });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -50,17 +44,9 @@ export default function Home() {
       <Card className="mb-8">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-2xl">Twitter Posting Dashboard</CardTitle>
-          <Button 
-            onClick={() => testPostMutation.mutate()}
-            disabled={testPostMutation.isPending}
-          >
-            {testPostMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : (
-              <Send className="h-4 w-4 mr-2" />
-            )}
-            Test Post Now
-          </Button>
+          <div className="text-sm text-muted-foreground">
+            Due to Twitter API limitations, use manual posting
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex gap-4">
@@ -113,6 +99,27 @@ export default function Home() {
                       <p><strong>Revenue:</strong> {post.revenue}</p>
                       <p><strong>Monthly Profit:</strong> {post.monthlyProfit}</p>
                       <p><strong>Profit Margin:</strong> {post.profitMargin}</p>
+                    </div>
+                    <div className="mt-4 bg-muted p-4 rounded-md">
+                      <p className="text-sm font-mono">{post.promoText}</p>
+                      <div className="mt-2 flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => copyToClipboard(post.promoText)}
+                        >
+                          <Copy className="h-4 w-4 mr-2" />
+                          Copy Tweet
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open('https://twitter.com/compose/tweet', '_blank')}
+                        >
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          Open Twitter
+                        </Button>
+                      </div>
                     </div>
                     {post.error && (
                       <p className="mt-2 text-sm text-destructive">{post.error}</p>
