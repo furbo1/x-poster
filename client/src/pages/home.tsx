@@ -5,26 +5,28 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle, XCircle, Send } from "lucide-react";
 import type { Post } from "@shared/schema";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
   const { toast } = useToast();
-  const { data: posts, isLoading, refetch } = useQuery<Post[]>({
+  const { data: posts, isLoading } = useQuery<Post[]>({
     queryKey: ["/api/posts"],
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   const testPostMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("POST", "/api/posts/test");
+      const response = await apiRequest("POST", "/api/posts/test");
+      return response.json();
     },
     onSuccess: () => {
       toast({
         title: "Success",
         description: "Tweet posted successfully!",
       });
-      refetch(); // Refresh the posts list
+      // Invalidate and refetch
+      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
     },
     onError: (error: Error) => {
       toast({
