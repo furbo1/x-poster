@@ -9,13 +9,17 @@ function getTwitterClient() {
       throw new Error("Twitter credentials not found in environment variables");
     }
 
+    log(`Initializing Twitter client with API key: ${process.env.TWITTER_API_KEY.substring(0, 5)}...`, 'twitter');
+
     // Create client with OAuth 1.0a user context
-    return new TwitterApi({
+    const client = new TwitterApi({
       appKey: process.env.TWITTER_API_KEY,
       appSecret: process.env.TWITTER_API_SECRET,
       accessToken: process.env.TWITTER_ACCESS_TOKEN,
       accessSecret: process.env.TWITTER_ACCESS_SECRET,
-    }).readWrite;
+    });
+
+    return client;
   } catch (error: any) {
     log(`Failed to initialize Twitter client: ${error.message}`, 'twitter');
     throw new Error(`Twitter client initialization failed: ${error.message}`);
@@ -27,16 +31,26 @@ export async function postTweet(text: string): Promise<void> {
     const client = getTwitterClient();
     log(`Attempting to post tweet with text length: ${text.length}`, 'twitter');
 
-    // Post the tweet
-    const tweet = await client.v2.tweet({
-      text: text,
-    });
+    // Try to verify credentials first
+    try {
+      await client.v1.verifyCredentials();
+      log(`Successfully verified Twitter credentials`, 'twitter');
+    } catch (verifyError: any) {
+      log(`Failed to verify credentials: ${verifyError.message}`, 'twitter');
+      if (verifyError.data) {
+        log(`Verification Error Details: ${JSON.stringify(verifyError.data)}`, 'twitter');
+      }
+      throw verifyError;
+    }
 
-    if (!tweet?.data?.id) {
+    // Post tweet using v1.1 API
+    const tweet = await client.v1.tweet(text);
+
+    if (!tweet?.id_str) {
       throw new Error("Failed to get tweet ID from response");
     }
 
-    log(`Successfully posted tweet with ID: ${tweet.data.id}`, 'twitter');
+    log(`Successfully posted tweet with ID: ${tweet.id_str}`, 'twitter');
   } catch (error: any) {
     const errorMessage = error.message || error.toString();
     log(`Failed to post tweet: ${errorMessage}`, 'twitter');
