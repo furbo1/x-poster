@@ -9,10 +9,14 @@ function getTwitterClient() {
       throw new Error("Twitter credentials not found in environment variables");
     }
 
-    log(`Using Twitter API key: ${process.env.TWITTER_API_KEY.substring(0, 5)}...`, 'twitter');
+    // Log truncated credentials for debugging
+    log(`Using credentials:`, 'twitter');
+    log(`- API Key: ${process.env.TWITTER_API_KEY.substring(0, 5)}...`, 'twitter');
+    log(`- Access Token: ${process.env.TWITTER_ACCESS_TOKEN.substring(0, 5)}...`, 'twitter');
 
     // Create client with OAuth 1.0a user context
     const client = new TwitterApi({
+      // Using the correct parameter names for OAuth 1.0a
       appKey: process.env.TWITTER_API_KEY,
       appSecret: process.env.TWITTER_API_SECRET,
       accessToken: process.env.TWITTER_ACCESS_TOKEN,
