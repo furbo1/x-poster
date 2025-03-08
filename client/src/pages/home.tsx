@@ -18,7 +18,8 @@ export default function Home() {
   const testPostMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest("POST", "/api/posts/test");
-      return response.json();
+      const data = await response.json();
+      return data;
     },
     onSuccess: () => {
       toast({
@@ -28,10 +29,19 @@ export default function Home() {
       // Invalidate and refetch
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
     },
-    onError: (error: Error) => {
+    onError: (error: any) => {
+      let errorMessage = error.message;
+      // Try to parse the error message if it's JSON
+      try {
+        const parsed = JSON.parse(error.message);
+        errorMessage = parsed.details?.[0]?.message || parsed.message || error.message;
+      } catch (e) {
+        // If parsing fails, use the original message
+      }
+
       toast({
         title: "Error",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -50,7 +60,7 @@ export default function Home() {
       <Card className="mb-8">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-2xl">Twitter Posting Dashboard</CardTitle>
-          <Button 
+          <Button
             onClick={() => testPostMutation.mutate()}
             disabled={testPostMutation.isPending}
           >
@@ -71,7 +81,7 @@ export default function Home() {
             <div>
               <p className="text-sm text-muted-foreground">Posted</p>
               <p className="text-2xl font-bold">
-                {posts?.filter(p => p.posted).length || 0}
+                {posts?.filter((p) => p.posted).length || 0}
               </p>
             </div>
           </div>
@@ -95,8 +105,14 @@ export default function Home() {
                           {post.category} • {post.location}
                         </p>
                       </div>
-                      <Badge 
-                        variant={post.posted ? "default" : post.error ? "destructive" : "secondary"}
+                      <Badge
+                        variant={
+                          post.posted
+                            ? "default"
+                            : post.error
+                            ? "destructive"
+                            : "secondary"
+                        }
                         className="flex items-center"
                       >
                         {post.posted ? (
@@ -115,10 +131,15 @@ export default function Home() {
                       <p><strong>Profit Margin:</strong> {post.profitMargin}</p>
                     </div>
                     <div className="mt-4 bg-muted p-4 rounded-md">
-                      <p className="text-sm font-mono whitespace-pre-wrap">{post.promoText}</p>
+                      <p className="text-sm font-mono whitespace-pre-wrap">
+                        {post.promoText}
+                      </p>
                     </div>
                     {post.error && (
-                      <p className="mt-2 text-sm text-destructive">{post.error}</p>
+                      <div className="mt-2 p-3 bg-destructive/10 text-destructive rounded-md">
+                        <p className="text-sm font-medium">Error posting tweet:</p>
+                        <p className="text-sm whitespace-pre-wrap">{post.error}</p>
+                      </div>
                     )}
                   </CardContent>
                 </Card>

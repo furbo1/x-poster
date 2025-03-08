@@ -25,13 +25,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       log(`Test posting tweet for listing: ${post.name}`, "twitter");
-      await postTweet(post.promoText);
-      await storage.markAsPosted(post.id);
 
-      res.json({ message: "Tweet posted successfully", post });
+      try {
+        await postTweet(post.promoText);
+        await storage.markAsPosted(post.id);
+        res.json({ 
+          message: "Tweet posted successfully", 
+          post,
+          status: "success" 
+        });
+      } catch (twitterError: any) {
+        const errorMessage = twitterError.message || "Unknown error occurred";
+        log(`Error posting tweet: ${errorMessage}`, "twitter");
+
+        if (twitterError.data) {
+          log(`Error details: ${JSON.stringify(twitterError.data)}`, "twitter");
+        }
+
+        res.status(500).json({ 
+          message: errorMessage,
+          details: twitterError.data,
+          status: "error"
+        });
+      }
     } catch (error: any) {
       log(`Error in test post: ${error.message}`, "twitter");
-      res.status(500).json({ message: error.message });
+      res.status(500).json({ 
+        message: error.message,
+        status: "error" 
+      });
     }
   });
 
