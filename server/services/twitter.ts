@@ -18,13 +18,6 @@ function getTwitterClient() {
     const accessToken = validateAndTrimCredential(process.env.TWITTER_ACCESS_TOKEN, 'Access Token');
     const accessSecret = validateAndTrimCredential(process.env.TWITTER_ACCESS_SECRET, 'Access Secret');
 
-    // Validate token formats
-    const tokenRegex = /^[A-Za-z0-9\-_]+$/;
-    if (!tokenRegex.test(apiKey) || !tokenRegex.test(apiSecret) || 
-        !tokenRegex.test(accessToken) || !tokenRegex.test(accessSecret)) {
-      throw new Error("Invalid token format - tokens should only contain alphanumeric characters, hyphens, and underscores");
-    }
-
     // Log truncated versions for debugging
     log(`Using credentials:`, 'twitter');
     log(`- API Key: ${apiKey.substring(0, 5)}...`, 'twitter');
@@ -32,10 +25,10 @@ function getTwitterClient() {
 
     // Create client with OAuth 1.0a user context
     return new TwitterApi({
-      appKey: encodeURIComponent(apiKey),
-      appSecret: encodeURIComponent(apiSecret),
-      accessToken: encodeURIComponent(accessToken),
-      accessSecret: encodeURIComponent(accessSecret),
+      appKey: apiKey,
+      appSecret: apiSecret,
+      accessToken: accessToken,
+      accessSecret: accessSecret,
     });
   } catch (error: any) {
     const errorMessage = error.message || "Unknown error occurred";
