@@ -1,14 +1,38 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, CheckCircle, XCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, CheckCircle, XCircle, Send } from "lucide-react";
 import type { Post } from "@shared/schema";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
-  const { data: posts, isLoading } = useQuery<Post[]>({
+  const { toast } = useToast();
+  const { data: posts, isLoading, refetch } = useQuery<Post[]>({
     queryKey: ["/api/posts"],
     refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  const testPostMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/posts/test");
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Tweet posted successfully!",
+      });
+      refetch(); // Refresh the posts list
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   if (isLoading) {
@@ -22,8 +46,19 @@ export default function Home() {
   return (
     <div className="container mx-auto py-8 px-4">
       <Card className="mb-8">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-2xl">Twitter Posting Dashboard</CardTitle>
+          <Button 
+            onClick={() => testPostMutation.mutate()}
+            disabled={testPostMutation.isPending}
+          >
+            {testPostMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <Send className="h-4 w-4 mr-2" />
+            )}
+            Test Post Now
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="flex gap-4">
@@ -58,7 +93,10 @@ export default function Home() {
                           {post.category} • {post.location}
                         </p>
                       </div>
-                      <Badge variant={post.posted ? "success" : post.error ? "destructive" : "secondary"}>
+                      <Badge 
+                        variant={post.posted ? "default" : post.error ? "destructive" : "secondary"}
+                        className="flex items-center"
+                      >
                         {post.posted ? (
                           <CheckCircle className="h-4 w-4 mr-1" />
                         ) : post.error ? (
