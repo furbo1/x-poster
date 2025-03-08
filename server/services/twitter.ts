@@ -1,26 +1,35 @@
 import { TwitterApi } from "twitter-api-v2";
 import { log } from "../vite";
 
+function validateAndTrimCredential(value: string | undefined, name: string): string {
+  if (!value || value.trim().length === 0) {
+    throw new Error(`${name} is missing or empty`);
+  }
+  const trimmed = value.trim();
+  log(`${name} length: ${trimmed.length} chars`, 'twitter');
+  return trimmed;
+}
+
 function getTwitterClient() {
   try {
-    // Verify environment variables
-    if (!process.env.TWITTER_API_KEY || !process.env.TWITTER_API_SECRET || 
-        !process.env.TWITTER_ACCESS_TOKEN || !process.env.TWITTER_ACCESS_SECRET) {
-      throw new Error("Twitter credentials not found in environment variables");
-    }
+    // Validate and trim credentials
+    const apiKey = validateAndTrimCredential(process.env.TWITTER_API_KEY, 'API Key');
+    const apiSecret = validateAndTrimCredential(process.env.TWITTER_API_SECRET, 'API Secret');
+    const accessToken = validateAndTrimCredential(process.env.TWITTER_ACCESS_TOKEN, 'Access Token');
+    const accessSecret = validateAndTrimCredential(process.env.TWITTER_ACCESS_SECRET, 'Access Secret');
 
-    // Log truncated credentials for debugging
+    // Log truncated versions for debugging
     log(`Using credentials:`, 'twitter');
-    log(`- API Key: ${process.env.TWITTER_API_KEY.substring(0, 5)}...`, 'twitter');
-    log(`- Access Token: ${process.env.TWITTER_ACCESS_TOKEN.substring(0, 5)}...`, 'twitter');
+    log(`- API Key: ${apiKey.substring(0, 5)}...`, 'twitter');
+    log(`- Access Token: ${accessToken.substring(0, 5)}...`, 'twitter');
 
     // Create client with OAuth 1.0a user context
     const client = new TwitterApi({
       // Using the correct parameter names for OAuth 1.0a
-      appKey: process.env.TWITTER_API_KEY,
-      appSecret: process.env.TWITTER_API_SECRET,
-      accessToken: process.env.TWITTER_ACCESS_TOKEN,
-      accessSecret: process.env.TWITTER_ACCESS_SECRET,
+      appKey: apiKey,
+      appSecret: apiSecret,
+      accessToken: accessToken,
+      accessSecret: accessSecret,
     });
 
     // Get the client with read-write access
@@ -59,5 +68,24 @@ export async function postTweet(text: string): Promise<void> {
     }
 
     throw new Error(errorMessage);
+  }
+}
+
+// New verification function
+export async function verifyTwitterCredentials(): Promise<boolean> {
+  try {
+    const client = getTwitterClient();
+    log('Attempting to verify Twitter credentials...', 'twitter');
+
+    // Try to get user information as a test
+    const user = await client.v1.verifyCredentials();
+    log(`Successfully verified credentials for user: ${user.screen_name}`, 'twitter');
+    return true;
+  } catch (error: any) {
+    log(`Credential verification failed: ${error.message}`, 'twitter');
+    if (error.data) {
+      log(`Verification Error Details: ${JSON.stringify(error.data, null, 2)}`, 'twitter');
+    }
+    return false;
   }
 }

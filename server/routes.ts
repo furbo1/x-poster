@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { startScheduler } from "./services/scheduler";
-import { postTweet } from "./services/twitter";
+import { postTweet, verifyTwitterCredentials } from "./services/twitter";
 import { log } from "./vite";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -19,6 +19,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Test endpoint to trigger a post immediately
   app.post("/api/posts/test", async (_req, res) => {
     try {
+      // First verify credentials
+      const isVerified = await verifyTwitterCredentials();
+      if (!isVerified) {
+        return res.status(401).json({ 
+          message: "Twitter credentials verification failed",
+          status: "error"
+        });
+      }
+
       const post = await storage.getNextUnpostedItem();
       if (!post) {
         return res.status(404).json({ message: "No unposted items found" });
