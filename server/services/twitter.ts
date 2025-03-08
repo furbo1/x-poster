@@ -35,10 +35,17 @@ function getTwitterClient(): TwitterApi {
 export async function postTweet(text: string): Promise<void> {
   try {
     const client = getTwitterClient();
-    await client.v2.tweet(text);
+    const v1Client = client.v1;  // Use v1 API for better compatibility
+
+    log(`Attempting to post tweet with text length: ${text.length}`, 'twitter');
+    await v1Client.tweet(text);
     log(`Successfully posted tweet: ${text.substring(0, 50)}...`, 'twitter');
   } catch (error: any) {
-    log(`Failed to post tweet: ${error.message}`, 'twitter');
-    throw new Error(`Failed to post tweet: ${error.message}`);
+    const errorMessage = error.message || error.toString();
+    log(`Failed to post tweet: ${errorMessage}`, 'twitter');
+    if (error.data) {
+      log(`Twitter API Error Details: ${JSON.stringify(error.data)}`, 'twitter');
+    }
+    throw new Error(`Failed to post tweet: ${errorMessage}`);
   }
 }
