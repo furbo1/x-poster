@@ -3,10 +3,10 @@ import { log } from "../vite";
 
 function getTwitterClient(): TwitterApi {
   const credentials = {
-    appKey: process.env.TWITTER_API_KEY,
-    appSecret: process.env.TWITTER_API_SECRET,
-    accessToken: process.env.TWITTER_ACCESS_TOKEN,
-    accessSecret: process.env.TWITTER_ACCESS_SECRET,
+    appKey: process.env.TWITTER_API_KEY || 'AjQwmmc7fqs8KdMgc8KS0hONy',
+    appSecret: process.env.TWITTER_API_SECRET || 'ARso268mRpDRVFZMH5AyDmmo3xirKOQBY8BP8El1OgxP7DbzsJ',
+    accessToken: process.env.TWITTER_ACCESS_TOKEN || '1460679066672115714-elqvrB3Gi5XkdkhFrvNYx5jfjuuENP',
+    accessSecret: process.env.TWITTER_ACCESS_SECRET || '05bENxVnuqRIVrrfOeWfKM9VQMsJzPlOiILMORvUGhWr9',
   };
 
   // Log available credentials (without exposing the actual values)
@@ -17,12 +17,19 @@ function getTwitterClient(): TwitterApi {
     Access Secret: ${credentials.accessSecret ? 'Present' : 'Missing'}
   `, 'twitter');
 
-  if (!credentials.appKey || !credentials.appSecret || 
-      !credentials.accessToken || !credentials.accessSecret) {
-    throw new Error("Missing Twitter credentials. Please ensure all required environment variables are set.");
-  }
+  try {
+    const client = new TwitterApi({
+      appKey: credentials.appKey,
+      appSecret: credentials.appSecret,
+      accessToken: credentials.accessToken,
+      accessSecret: credentials.accessSecret,
+    });
 
-  return new TwitterApi(credentials);
+    return client;
+  } catch (error: any) {
+    log(`Failed to initialize Twitter client: ${error.message}`, 'twitter');
+    throw new Error(`Twitter client initialization failed: ${error.message}`);
+  }
 }
 
 export async function postTweet(text: string): Promise<void> {
