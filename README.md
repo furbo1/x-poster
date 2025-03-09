@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Twitter Posting Platform
 
 A secure Twitter posting platform with restricted authentication.
@@ -53,3 +54,6 @@ The vercel.json file contains all necessary deployment configurations.
 - Schedule management
 - Post tracking
 - Secure authentication
+=======
+# x-poster
+>>>>>>> origin/main
