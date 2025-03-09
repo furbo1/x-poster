@@ -27,6 +27,10 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUser(id: number): Promise<User | undefined>;
+  setResetToken(email: string, token: string): Promise<void>;
+  verifyResetToken(token: string): Promise<User | undefined>;
+  updatePassword(userId: number, newPassword: string): Promise<void>;
+  getUserByEmail(email: string): Promise<User | undefined>;
 
   // Session store
   sessionStore: session.Store;
@@ -41,6 +45,7 @@ export class MemStorage implements IStorage {
   readonly sessionStore: session.Store;
 
   constructor() {
+    log('Initializing MemStorage...', 'storage');
     this.posts = new Map();
     this.users = new Map();
     this.currentId = 1;
@@ -48,6 +53,7 @@ export class MemStorage implements IStorage {
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000, // prune expired entries every 24h
     });
+    log('MemStorage initialized successfully', 'storage');
   }
 
   async getAllPosts(): Promise<Post[]> {
@@ -247,14 +253,67 @@ export class MemStorage implements IStorage {
   async getUser(id: number): Promise<User | undefined> {
     return this.users.get(id);
   }
+
+  async setResetToken(email: string, token: string): Promise<void> {
+    const user = await this.getUserByEmail(email);
+    if (user) {
+      const expiry = new Date();
+      expiry.setHours(expiry.getHours() + 1); // Token expires in 1 hour
+
+      this.users.set(user.id, {
+        ...user,
+        resetToken: token,
+        resetTokenExpiry: expiry,
+      });
+    }
+  }
+
+  async verifyResetToken(token: string): Promise<User | undefined> {
+    const user = Array.from(this.users.values()).find(
+      (u) => u.resetToken === token && u.resetTokenExpiry && u.resetTokenExpiry > new Date()
+    );
+    return user;
+  }
+
+  async updatePassword(userId: number, newPassword: string): Promise<void> {
+    const user = this.users.get(userId);
+    if (user) {
+      this.users.set(userId, {
+        ...user,
+        password: newPassword,
+        resetToken: null,
+        resetTokenExpiry: null,
+      });
+    }
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.email === email
+    );
+  }
 }
 
 export const storage = new MemStorage();
 
-// Initialize storage with JSON data
+// Initialize storage with JSON data only if the file exists
 const jsonPath = path.join(process.cwd(), "attached_assets/Pasted--name-Wickly-nl-category-Ecommerce-Candle-Webshop-location-Nether-1741446888682.txt");
-storage.initializeFromJson(jsonPath)
-  .catch(error => {
-    log(`Failed to initialize storage: ${error.message}`, 'storage');
-    process.exit(1);
-  });
+
+async function initializeStorageIfFileExists() {
+  try {
+    log('Checking for JSON data file...', 'storage');
+    await fs.access(jsonPath);
+    log('JSON data file found, initializing storage...', 'storage');
+    await storage.initializeFromJson(jsonPath);
+    log('Storage initialized successfully from JSON file', 'storage');
+  } catch (error: any) {
+    log(`Note: JSON data file not found or initialization skipped: ${error.message}`, 'storage');
+    // Continue without initialization - this is not a fatal error
+  }
+}
+
+// Initialize asynchronously without blocking server startup
+initializeStorageIfFileExists().catch(error => {
+  log(`Warning: Failed to initialize storage from JSON: ${error.message}`, 'storage');
+  // Continue anyway - the storage is still usable for authentication
+});

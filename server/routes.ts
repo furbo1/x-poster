@@ -8,6 +8,9 @@ import { insertScheduleConfigSchema } from "@shared/schema";
 import path from "path";
 import fs from "fs/promises";
 import { setupAuth, requireAuth } from "./auth";
+import { resetPasswordSchema, newPasswordSchema } from "@shared/schema";
+import { randomBytes } from "crypto";
+import { hashPassword } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication
@@ -182,6 +185,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: error.message,
         status: "error" 
       });
+    }
+  });
+
+  app.post("/api/reset-password", async (req, res) => {
+    try {
+      const { email } = resetPasswordSchema.parse(req.body);
+
+      // Only allow reset for the specified email
+      if (email !== "al_razvan@yahoo.com") {
+        return res.status(400).json({ message: "Invalid email address" });
+      }
+
+      const token = randomBytes(32).toString("hex");
+      await storage.setResetToken(email, token);
+
+      // Here you would typically send an email with the reset link
+      // For now, we'll just return the token in the response
+      res.json({ 
+        message: "Password reset instructions have been sent to your email",
+        token // In production, remove this and send via email
+      });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/reset-password/:token", async (req, res) => {
+    try {
+      const { token } = req.params;
+      const { password } = newPasswordSchema.parse(req.body);
+
+      const user = await storage.verifyResetToken(token);
+      if (!user) {
+        return res.status(400).json({ message: "Invalid or expired reset token" });
+      }
+
+      const hashedPassword = await hashPassword(password);
+      await storage.updatePassword(user.id, hashedPassword);
+
+      res.json({ message: "Password updated successfully" });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
     }
   });
 

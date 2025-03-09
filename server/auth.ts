@@ -15,7 +15,7 @@ declare global {
 
 const scryptAsync = promisify(scrypt);
 
-async function hashPassword(password: string) {
+export async function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
   const buf = (await scryptAsync(password, salt, 64)) as Buffer;
   return `${buf.toString("hex")}.${salt}`;
@@ -72,6 +72,11 @@ export function setupAuth(app: Express) {
   // Auth routes
   app.post("/api/register", async (req, res, next) => {
     try {
+      // Only allow registration for the specified email
+      if (req.body.username !== "EliteBizOpportunities@proton.me") {
+        return res.status(400).json({ message: "Registration is not allowed" });
+      }
+
       const existingUser = await storage.getUserByUsername(req.body.username);
       if (existingUser) {
         return res.status(400).json({ message: "Username already exists" });
@@ -80,6 +85,7 @@ export function setupAuth(app: Express) {
       const hashedPassword = await hashPassword(req.body.password);
       const user = await storage.createUser({
         username: req.body.username,
+        email: "al_razvan@yahoo.com", // Hardcode your email
         password: hashedPassword,
       });
 

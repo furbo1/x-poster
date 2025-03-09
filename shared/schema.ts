@@ -6,7 +6,10 @@ import { z } from "zod";
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
+  email: text("email").notNull().unique(),
   password: text("password").notNull(),
+  resetToken: text("reset_token"),
+  resetTokenExpiry: timestamp("reset_token_expiry"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -57,10 +60,23 @@ export const insertPostSchema = createInsertSchema(posts).omit({
 // User schemas with validation
 export const insertUserSchema = createInsertSchema(users, {
   username: z.string().min(3, "Username must be at least 3 characters"),
+  email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
 }).omit({
   id: true,
   createdAt: true,
+  resetToken: true,
+  resetTokenExpiry: true,
+});
+
+// Add a schema for password reset
+export const resetPasswordSchema = z.object({
+  email: z.string().email("Invalid email address"),
+});
+
+export const newPasswordSchema = z.object({
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  token: z.string(),
 });
 
 export type InsertScheduleConfig = z.infer<typeof insertScheduleConfigSchema>;

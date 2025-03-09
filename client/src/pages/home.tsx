@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Loader2, CheckCircle, XCircle, Send, Calendar, SkipForward, Upload } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Send, Calendar, SkipForward, Upload, LogOut } from "lucide-react";
 import { format } from "date-fns";
 import {
   Select,
@@ -18,6 +18,7 @@ import type { Post, ScheduleConfig } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
 
 interface FileUploadResponse {
   message: string;
@@ -25,6 +26,7 @@ interface FileUploadResponse {
 
 export default function Home() {
   const { toast } = useToast();
+  const { logoutMutation } = useAuth();
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [interval, setInterval] = useState("30");
@@ -200,6 +202,20 @@ export default function Home() {
 
   return (
     <div className="container mx-auto py-8 px-4">
+      <div className="flex justify-end mb-4">
+        <Button
+          variant="outline"
+          onClick={() => logoutMutation.mutate()}
+          disabled={logoutMutation.isPending}
+        >
+          {logoutMutation.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+          ) : (
+            <LogOut className="h-4 w-4 mr-2" />
+          )}
+          Logout
+        </Button>
+      </div>
       <Card className="mb-8">
         <CardHeader>
           <CardTitle className="text-2xl">Schedule Configuration</CardTitle>
@@ -450,8 +466,8 @@ export default function Home() {
                           post.posted
                             ? "default"
                             : post.error
-                            ? "destructive"
-                            : "secondary"
+                              ? "destructive"
+                              : "secondary"
                         }
                         className="flex items-center"
                       >
