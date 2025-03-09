@@ -13,6 +13,11 @@ import { randomBytes } from "crypto";
 import { hashPassword } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Health check endpoint for Render
+  app.get("/api/health", (_req, res) => {
+    res.status(200).json({ status: "healthy" });
+  });
+
   // Set up authentication
   setupAuth(app);
 

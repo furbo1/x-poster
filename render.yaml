@@ -2,8 +2,9 @@ services:
   - type: web
     name: twitter-posting-platform
     env: node
+    plan: free
     buildCommand: npm install && npm run build
-    startCommand: npm run start
+    startCommand: NODE_ENV=production node dist/index.js
     envVars:
       - key: NODE_ENV
         value: production
@@ -17,3 +18,5 @@ services:
         sync: false
       - key: SESSION_SECRET
         generateValue: true
+    healthCheckPath: /api/health
+    autoDeploy: true
