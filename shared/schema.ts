@@ -27,7 +27,11 @@ export const posts = pgTable("posts", {
   error: text("error"),
 });
 
-export const insertScheduleConfigSchema = createInsertSchema(scheduleConfig).omit({
+// Create a custom schema that accepts ISO strings for dates
+export const insertScheduleConfigSchema = createInsertSchema(scheduleConfig, {
+  startTime: z.string().transform(str => new Date(str)),
+  endTime: z.string().transform(str => new Date(str)),
+}).omit({
   id: true,
   isActive: true,
 });

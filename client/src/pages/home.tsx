@@ -37,7 +37,18 @@ export default function Home() {
   const scheduleMutation = useMutation({
     mutationFn: async (data: { startTime: string; endTime: string; interval: number }) => {
       const response = await apiRequest("POST", "/api/schedule", data);
-      return response.json();
+      const result = await response.json();
+      if (!response.ok) {
+        // Try to parse the error message if it's JSON
+        try {
+          const parsed = JSON.parse(result.message);
+          const errors = parsed.map((err: any) => err.message).join(", ");
+          throw new Error(errors);
+        } catch (e) {
+          throw new Error(result.message);
+        }
+      }
+      return result;
     },
     onSuccess: () => {
       toast({
