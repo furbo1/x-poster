@@ -15,7 +15,7 @@ async function testTwitterSetup() {
     console.log(`Access token length: ${access_token?.length}`);
     console.log(`Access token secret length: ${access_token_secret?.length}`);
 
-    // Create client exactly like Tweepy example
+    // Create client exactly like working example
     const client = new TwitterApi({
       appKey: consumer_key,
       appSecret: consumer_secret,
@@ -25,14 +25,14 @@ async function testTwitterSetup() {
 
     // Test authentication
     console.log('Testing authentication...');
-    const user = await client.v1.verifyCredentials();
+    const user = await client.v2.me();
     console.log('Authentication successful!');
-    console.log(`Authenticated as: ${user.screen_name}`);
+    console.log(`Authenticated as: ${user.data.username}`);
 
     // Try posting a test tweet
     console.log('Attempting to post test tweet...');
-    const tweet = await client.v1.tweet('Test tweet from Twitter API v2');
-    console.log(`Successfully posted tweet with ID: ${tweet.id_str}`);
+    const tweet = await client.v2.tweet('Test tweet from Twitter API v2');
+    console.log(`Successfully posted tweet with ID: ${tweet.data.id}`);
 
     return true;
   } catch (error: any) {

@@ -1,5 +1,4 @@
 import { TwitterApi } from "twitter-api-v2";
-import { log } from "../vite";
 
 async function testTwitterSetup() {
   try {
