@@ -6,9 +6,19 @@ A secure Twitter posting platform with restricted authentication.
 
 ### Option 1: Render.com (Recommended)
 1. Create a Render account at https://render.com
-2. Connect your repository to Render
-3. Create a new Web Service
-4. Set up the following environment variables in Render:
+2. Connect your repository:
+   - Click "New +" button
+   - Select "Web Service"
+   - Choose "Connect your GitHub account"
+   - Select your repository from the list
+
+3. Configure deployment:
+   - Name: Choose a name for your service
+   - Environment: Node
+   - Build Command: `npm install && npm run build`
+   - Start Command: `NODE_ENV=production node dist/index.js`
+
+4. Set up environment variables:
    - TWITTER_API_KEY
    - TWITTER_API_SECRET
    - TWITTER_ACCESS_TOKEN
