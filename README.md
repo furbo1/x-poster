@@ -2,17 +2,19 @@
 
 A secure Twitter posting platform with restricted authentication.
 
-## Deployment Instructions
+## Deployment Instructions (Render.com)
 
-1. Create a Vercel account at https://vercel.com
-2. Install Vercel CLI: `npm i -g vercel`
-3. Run `vercel` in the project root
-4. Set up the following environment variables in Vercel:
+1. Create a Render account at https://render.com
+2. Connect your repository to Render
+3. Create a new Web Service
+4. Set up the following environment variables in Render:
    - TWITTER_API_KEY
    - TWITTER_API_SECRET
    - TWITTER_ACCESS_TOKEN
    - TWITTER_ACCESS_SECRET
-   - SESSION_SECRET (generate a random string)
+   - SESSION_SECRET (will be auto-generated)
+
+The render.yaml file will handle the rest of the configuration automatically.
 
 ## Authentication
 
