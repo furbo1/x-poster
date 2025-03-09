@@ -71,8 +71,8 @@ export default function Home() {
     },
   });
 
-  const pendingPosts = posts?.filter(p => !p.posted) || [];
-  const postedPosts = posts?.filter(p => p.posted) || [];
+  const pendingPosts = posts?.filter(p => !p.posted && !p.skipped) || [];
+  const postedPosts = posts?.filter(p => p.posted && !p.skipped) || [];
 
   const testPostMutation = useMutation({
     mutationFn: async () => {
