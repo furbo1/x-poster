@@ -169,6 +169,27 @@ export default function Home() {
     }
   };
 
+  const cancelAllMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/posts/cancel-all");
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "All pending posts cancelled successfully!",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   if (postsLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -286,7 +307,24 @@ export default function Home() {
         {/* Pending Posts */}
         <Card>
           <CardHeader>
-            <CardTitle>Pending Posts ({pendingPosts.length})</CardTitle>
+            <div className="flex justify-between items-center">
+              <CardTitle>Pending Posts ({pendingPosts.length})</CardTitle>
+              {pendingPosts.length > 0 && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => cancelAllMutation.mutate()}
+                  disabled={cancelAllMutation.isPending}
+                >
+                  {cancelAllMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <XCircle className="h-4 w-4 mr-2" />
+                  )}
+                  Cancel All
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-[400px] pr-4">

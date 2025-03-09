@@ -17,6 +17,7 @@ export interface IStorage {
   getActiveScheduleConfig(): Promise<ScheduleConfig | undefined>;
   updatePostScheduledTimes(interval: number): Promise<void>;
   getPostsByStatus(posted: boolean): Promise<Post[]>;
+  markAllAsSkipped(): Promise<void>; // Added method
 }
 
 export class MemStorage implements IStorage {
@@ -191,6 +192,20 @@ export class MemStorage implements IStorage {
           return (a.scheduledTime?.getTime() || 0) - (b.scheduledTime?.getTime() || 0);
         }
       });
+  }
+
+  async markAllAsSkipped(): Promise<void> {
+    log('Marking all pending posts as skipped', 'storage');
+    const pendingPosts = Array.from(this.posts.values())
+      .filter(post => !post.posted && !post.error && !post.skipped);
+
+    for (const post of pendingPosts) {
+      this.posts.set(post.id, {
+        ...post,
+        skipped: true,
+        error: null,
+      });
+    }
   }
 }
 

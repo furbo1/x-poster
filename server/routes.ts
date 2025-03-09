@@ -187,6 +187,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Cancel all pending posts
+  app.post("/api/posts/cancel-all", async (_req, res) => {
+    try {
+      await storage.markAllAsSkipped();
+      res.json({ message: "All pending posts cancelled successfully" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Initialize scheduler
   startScheduler();
 
