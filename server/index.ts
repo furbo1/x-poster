@@ -48,23 +48,26 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
+  // Only setup vite in development
+  if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
-  // Listen on port 5000 only, do not try alternative ports
-  server.listen({
-    port: 5000,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port 5000`);
-  });
+  // Export the Express app for Vercel
+  module.exports = app;
+
+  // Only listen in development
+  if (process.env.NODE_ENV === "development") {
+    server.listen({
+      port: 5000,
+      host: "0.0.0.0",
+      reusePort: true,
+    }, () => {
+      log(`serving on port 5000`);
+    });
+  }
 })().catch((err) => {
   log(`Failed to start server: ${err}`);
   process.exit(1);
