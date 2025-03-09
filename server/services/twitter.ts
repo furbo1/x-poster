@@ -90,9 +90,25 @@ export async function verifyTwitterCredentials(): Promise<boolean> {
     return true;
   } catch (error: any) {
     log(`Credential verification failed: ${error.message}`, 'twitter');
+    
+    // Log more detailed error information
     if (error.data) {
       log(`Error details: ${JSON.stringify(error.data)}`, 'twitter');
     }
+    
+    // Add credential format checks to help diagnose issues
+    const credentials = {
+      apiKey: process.env.TWITTER_API_KEY?.trim() || '',
+      apiSecret: process.env.TWITTER_API_SECRET?.trim() || '',
+      accessToken: process.env.TWITTER_ACCESS_TOKEN?.trim() || '',
+      accessSecret: process.env.TWITTER_ACCESS_SECRET?.trim() || '',
+    };
+    
+    log('Credential format check:', 'twitter');
+    Object.entries(credentials).forEach(([key, value]) => {
+      log(`${key}: Length=${value.length}, HasSpaces=${/\s/.test(value)}`, 'twitter');
+    });
+    
     return false;
   }
 }
