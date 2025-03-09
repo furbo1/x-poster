@@ -2,8 +2,9 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { startScheduler } from "./services/scheduler";
-import { postTweet, verifyTwitterCredentials, testAuth } from "./services/twitter";
+import { postTweet, verifyTwitterCredentials } from "./services/twitter";
 import { log } from "./vite";
+import { insertScheduleConfigSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Get all posts
@@ -13,6 +14,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(posts);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Get current schedule configuration
+  app.get("/api/schedule", async (_req, res) => {
+    try {
+      const config = await storage.getActiveScheduleConfig();
+      res.json(config || null);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Update schedule configuration
+  app.post("/api/schedule", async (req, res) => {
+    try {
+      const data = insertScheduleConfigSchema.parse(req.body);
+
+      // Validate time range
+      const start = new Date(data.startTime);
+      const end = new Date(data.endTime);
+
+      if (start >= end) {
+        return res.status(400).json({
+          message: "End time must be after start time"
+        });
+      }
+
+      if (start < new Date()) {
+        return res.status(400).json({
+          message: "Start time must be in the future"
+        });
+      }
+
+      const config = await storage.saveScheduleConfig(data);
+      res.json(config);
+    } catch (error: any) {
+      res.status(400).json({
+        message: error.message
+      });
     }
   });
 

@@ -1,6 +1,15 @@
-import { pgTable, text, serial, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, boolean, timestamp, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+// Scheduling configuration table
+export const scheduleConfig = pgTable("schedule_config", {
+  id: serial("id").primaryKey(),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time").notNull(),
+  interval: integer("interval").notNull(), // in minutes
+  isActive: boolean("is_active").default(true),
+});
 
 export const posts = pgTable("posts", {
   id: serial("id").primaryKey(),
@@ -14,15 +23,24 @@ export const posts = pgTable("posts", {
   promoText: text("promo_text").notNull(),
   posted: boolean("posted").default(false),
   postedAt: timestamp("posted_at"),
+  scheduledTime: timestamp("scheduled_time"),
   error: text("error"),
+});
+
+export const insertScheduleConfigSchema = createInsertSchema(scheduleConfig).omit({
+  id: true,
+  isActive: true,
 });
 
 export const insertPostSchema = createInsertSchema(posts).omit({
   id: true,
   posted: true,
   postedAt: true,
+  scheduledTime: true,
   error: true,
 });
 
+export type InsertScheduleConfig = z.infer<typeof insertScheduleConfigSchema>;
+export type ScheduleConfig = typeof scheduleConfig.$inferSelect;
 export type InsertPost = z.infer<typeof insertPostSchema>;
 export type Post = typeof posts.$inferSelect;

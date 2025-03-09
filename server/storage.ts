@@ -1,4 +1,4 @@
-import { posts, type Post, type InsertPost } from "@shared/schema";
+import { posts, scheduleConfig, type Post, type InsertPost, type ScheduleConfig, type InsertScheduleConfig } from "@shared/schema";
 import fs from "fs/promises";
 import path from "path";
 import { log } from "./vite";
@@ -10,11 +10,18 @@ export interface IStorage {
   markAsFailed(id: number, error: string): Promise<void>;
   initializeFromJson(filePath: string): Promise<void>;
   clearErrors(): Promise<void>;
+
+  // New scheduling methods
+  saveScheduleConfig(config: InsertScheduleConfig): Promise<ScheduleConfig>;
+  getActiveScheduleConfig(): Promise<ScheduleConfig | undefined>;
+  updatePostScheduledTimes(interval: number): Promise<void>;
+  getPostsByStatus(posted: boolean): Promise<Post[]>;
 }
 
 export class MemStorage implements IStorage {
   private posts: Map<number, Post>;
   private currentId: number;
+  private scheduleConfig?: ScheduleConfig;
 
   constructor() {
     this.posts = new Map();
@@ -121,6 +128,59 @@ export class MemStorage implements IStorage {
       log(errorMessage, 'storage');
       throw new Error(errorMessage);
     }
+  }
+
+  async saveScheduleConfig(config: InsertScheduleConfig): Promise<ScheduleConfig> {
+    this.scheduleConfig = {
+      id: 1,
+      startTime: config.startTime,
+      endTime: config.endTime,
+      interval: config.interval,
+      isActive: true
+    };
+
+    // Update scheduled times for all posts
+    await this.updatePostScheduledTimes(config.interval);
+
+    return this.scheduleConfig;
+  }
+
+  async getActiveScheduleConfig(): Promise<ScheduleConfig | undefined> {
+    return this.scheduleConfig;
+  }
+
+  async updatePostScheduledTimes(interval: number): Promise<void> {
+    if (!this.scheduleConfig) return;
+
+    const unpostedPosts = Array.from(this.posts.values())
+      .filter(post => !post.posted)
+      .sort((a, b) => a.id - b.id);
+
+    let scheduledTime = new Date(this.scheduleConfig.startTime);
+
+    for (const post of unpostedPosts) {
+      if (scheduledTime <= new Date(this.scheduleConfig.endTime)) {
+        this.posts.set(post.id, {
+          ...post,
+          scheduledTime
+        });
+        scheduledTime = new Date(scheduledTime.getTime() + interval * 60000);
+      }
+    }
+  }
+
+  async getPostsByStatus(posted: boolean): Promise<Post[]> {
+    return Array.from(this.posts.values())
+      .filter(post => post.posted === posted)
+      .sort((a, b) => {
+        if (posted) {
+          // Sort posted tweets by posted time
+          return (b.postedAt?.getTime() || 0) - (a.postedAt?.getTime() || 0);
+        } else {
+          // Sort pending tweets by scheduled time
+          return (a.scheduledTime?.getTime() || 0) - (b.scheduledTime?.getTime() || 0);
+        }
+      });
   }
 }
 
