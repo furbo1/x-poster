@@ -10,32 +10,32 @@ function validateAndTrimCredential(value: string | undefined, name: string): str
   return trimmed;
 }
 
-// Create Twitter client with OAuth 1.0a credentials
 function getTwitterClient() {
   try {
-    const apiKey = process.env.TWITTER_API_KEY?.trim();
-    const apiSecret = process.env.TWITTER_API_SECRET?.trim();
-    const accessToken = process.env.TWITTER_ACCESS_TOKEN?.trim();
-    const accessSecret = process.env.TWITTER_ACCESS_SECRET?.trim();
+    const apiKey = validateAndTrimCredential(process.env.TWITTER_API_KEY, 'API Key');
+    const apiSecret = validateAndTrimCredential(process.env.TWITTER_API_SECRET, 'API Secret');
+    const accessToken = validateAndTrimCredential(process.env.TWITTER_ACCESS_TOKEN, 'Access Token');
+    const accessSecret = validateAndTrimCredential(process.env.TWITTER_ACCESS_SECRET, 'Access Secret');
 
-    if (!apiKey || !apiSecret || !accessToken || !accessSecret) {
-      throw new Error("Missing required Twitter credentials");
-    }
+    // Log detailed credential info (safely)
+    log('Initializing Twitter client with credentials:', 'twitter');
+    log(`API Key (first 4 chars): ${apiKey.substring(0, 4)}...`, 'twitter');
+    log(`API Secret (first 4 chars): ${apiSecret.substring(0, 4)}...`, 'twitter');
+    log(`Access Token (first 4 chars): ${accessToken.substring(0, 4)}...`, 'twitter');
+    log(`Access Secret (first 4 chars): ${accessSecret.substring(0, 4)}...`, 'twitter');
 
-    // Log credential info for debugging
-    log(`Initializing Twitter client with credentials:`, 'twitter');
-    log(`API Key length: ${apiKey.length}`, 'twitter');
-    log(`API Secret length: ${apiSecret.length}`, 'twitter');
-    log(`Access Token length: ${accessToken.length}`, 'twitter');
-    log(`Access Secret length: ${accessSecret.length}`, 'twitter');
-
-    // Create client with OAuth 1.0a credentials
-    return new TwitterApi({
+    // Create client with explicit API version selection
+    const client = new TwitterApi({
       appKey: apiKey,
       appSecret: apiSecret,
       accessToken: accessToken,
       accessSecret: accessSecret,
+    }, { 
+      version: '2', // Explicitly use v2
+      debug: true // Enable debug mode for more detailed logs
     });
+
+    return client;
   } catch (error: any) {
     log(`Twitter client initialization error: ${error.message}`, 'twitter');
     throw error;
@@ -45,10 +45,11 @@ function getTwitterClient() {
 export async function postTweet(text: string): Promise<void> {
   try {
     const client = getTwitterClient();
-    log(`Attempting to post tweet: "${text.substring(0, 20)}..."`, 'twitter');
+    log(`Attempting to post tweet (length: ${text.length}): "${text.substring(0, 20)}..."`, 'twitter');
 
-    const tweet = await client.v1.tweet(text);
-    log(`Successfully posted tweet with ID: ${tweet.id_str}`, 'twitter');
+    // Use v2 endpoint for tweeting
+    const tweet = await client.v2.tweet(text);
+    log(`Successfully posted tweet with ID: ${tweet.data.id}`, 'twitter');
   } catch (error: any) {
     log(`Failed to post tweet: ${error.message}`, 'twitter');
     if (error.data) {
@@ -63,8 +64,9 @@ export async function verifyTwitterCredentials(): Promise<boolean> {
     const client = getTwitterClient();
     log('Verifying Twitter credentials...', 'twitter');
 
-    const user = await client.v1.verifyCredentials();
-    log(`Verified credentials for user: ${user.screen_name}`, 'twitter');
+    // Use v2 endpoint for verification
+    const user = await client.v2.me();
+    log(`Verified credentials for user ID: ${user.data.id}`, 'twitter');
     return true;
   } catch (error: any) {
     log(`Credential verification failed: ${error.message}`, 'twitter');
