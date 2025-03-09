@@ -3,8 +3,8 @@ services:
     name: twitter-posting-platform
     env: node
     plan: free
-    buildCommand: npm install && npm run build
-    startCommand: NODE_ENV=production node dist/index.js
+    buildCommand: NODE_OPTIONS="--import" npm install && npm run build
+    startCommand: NODE_ENV=production NODE_OPTIONS="--import" node dist/index.js
     envVars:
       - key: NODE_ENV
         value: production

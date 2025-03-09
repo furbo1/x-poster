@@ -55,8 +55,8 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // Export the Express app for Vercel
-  module.exports = app;
+  // Export the Express app for deployment platforms
+  export default app;
 
   // Only listen in development
   if (process.env.NODE_ENV === "development") {
