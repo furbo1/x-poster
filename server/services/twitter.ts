@@ -3,19 +3,15 @@ import { log } from "../vite";
 
 function getTwitterClient() {
   try {
-    // Get and validate credentials
+    // Define credentials that we know work
     const credentials = {
-      apiKey: process.env.TWITTER_API_KEY?.trim() || '',
-      apiSecret: process.env.TWITTER_API_SECRET?.trim() || '',
-      accessToken: process.env.TWITTER_ACCESS_TOKEN?.trim() || '',
-      accessSecret: process.env.TWITTER_ACCESS_SECRET?.trim() || '',
+      apiKey: "4p0ZtIt0T0aZNoW3zgyF4gK1j",
+      apiSecret: "GST88nNkZE1bdMcQAcYVwwunWKA5nbSIzuAa0XrwvTHxfzAkVn",
+      accessToken: "1888979033922076672-Qw13Rdiq1OeyJ9d2vXSzbcGaIb4DLY",
+      accessSecret: "okK2j2Jj99j6x3WCd718adZfNOGUDWP48ClPB1lyYl8ZW",
     };
 
-    if (!credentials.apiKey || !credentials.apiSecret || !credentials.accessToken || !credentials.accessSecret) {
-      throw new Error("Missing required Twitter credentials");
-    }
-
-    // Create client with OAuth 1.0a credentials
+    // Create client with OAuth 1.0a user context
     const client = new TwitterApi({
       appKey: credentials.apiKey,
       appSecret: credentials.apiSecret,
@@ -83,24 +79,9 @@ export async function verifyTwitterCredentials(): Promise<boolean> {
     return true;
   } catch (error: any) {
     log(`Credential verification failed: ${error.message}`, 'twitter');
-
     if (error.data) {
       log(`Error details: ${JSON.stringify(error.data)}`, 'twitter');
     }
-
-    // Add credential format checks to help diagnose issues
-    const credentials = {
-      apiKey: process.env.TWITTER_API_KEY?.trim() || '',
-      apiSecret: process.env.TWITTER_API_SECRET?.trim() || '',
-      accessToken: process.env.TWITTER_ACCESS_TOKEN?.trim() || '',
-      accessSecret: process.env.TWITTER_ACCESS_SECRET?.trim() || '',
-    };
-
-    log('Credential format check:', 'twitter');
-    Object.entries(credentials).forEach(([key, value]) => {
-      log(`${key}: Length=${value.length}, HasSpaces=${/\s/.test(value)}`, 'twitter');
-    });
-
     return false;
   }
 }
