@@ -8,6 +8,8 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_OPTIONS
+        value: "--import"
       - key: TWITTER_API_KEY
         sync: false
       - key: TWITTER_API_SECRET
