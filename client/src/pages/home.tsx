@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Loader2, CheckCircle, XCircle, Send, Calendar } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Send, Calendar, SkipForward, Upload } from "lucide-react";
 import { format } from "date-fns";
 import {
   Select,
@@ -18,6 +18,10 @@ import type { Post, ScheduleConfig } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
+
+interface FileUploadResponse {
+  message: string;
+}
 
 export default function Home() {
   const { toast } = useToast();
@@ -101,6 +105,69 @@ export default function Home() {
       });
     },
   });
+
+  const skipMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiRequest("POST", `/api/posts/${id}/skip`);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Post skipped successfully!",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const uploadMutation = useMutation({
+    mutationFn: async (jsonData: any) => {
+      const response = await apiRequest("POST", "/api/posts/upload", jsonData);
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.message);
+      }
+      return result as FileUploadResponse;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "New posts uploaded successfully!",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const content = await file.text();
+      const jsonData = JSON.parse(content);
+      await uploadMutation.mutateAsync(jsonData);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Invalid JSON file: " + error.message,
+        variant: "destructive",
+      });
+    }
+  };
 
   if (postsLoading) {
     return (
@@ -198,6 +265,23 @@ export default function Home() {
         </CardContent>
       </Card>
 
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="text-2xl">Upload New Posts</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-4">
+            <Input
+              type="file"
+              accept=".json"
+              onChange={handleFileUpload}
+              disabled={uploadMutation.isPending}
+            />
+            {uploadMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Pending Posts */}
         <Card>
@@ -217,7 +301,18 @@ export default function Home() {
                             Scheduled: {post.scheduledTime ? format(new Date(post.scheduledTime), "PPp") : "Not scheduled"}
                           </p>
                         </div>
-                        <Badge variant="secondary">Pending</Badge>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => skipMutation.mutate(post.id)}
+                            disabled={skipMutation.isPending}
+                          >
+                            <SkipForward className="h-4 w-4 mr-1" />
+                            Skip
+                          </Button>
+                          <Badge variant="secondary">Pending</Badge>
+                        </div>
                       </div>
                       <div className="mt-2 text-sm">
                         <p className="whitespace-pre-wrap">{post.promoText}</p>

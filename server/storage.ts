@@ -1,4 +1,4 @@
-import { posts, scheduleConfig, type Post, type InsertPost, type ScheduleConfig, type InsertScheduleConfig } from "@shared/schema";
+import { posts, type Post, type InsertPost, type ScheduleConfig, type InsertScheduleConfig } from "@shared/schema";
 import fs from "fs/promises";
 import path from "path";
 import { log } from "./vite";
@@ -8,6 +8,7 @@ export interface IStorage {
   getNextUnpostedItem(): Promise<Post | undefined>;
   markAsPosted(id: number): Promise<void>;
   markAsFailed(id: number, error: string): Promise<void>;
+  markAsSkipped(id: number): Promise<void>;
   initializeFromJson(filePath: string): Promise<void>;
   clearErrors(): Promise<void>;
 
@@ -34,7 +35,7 @@ export class MemStorage implements IStorage {
 
   async getNextUnpostedItem(): Promise<Post | undefined> {
     return Array.from(this.posts.values()).find(
-      (post) => !post.posted && !post.error
+      (post) => !post.posted && !post.error && !post.skipped
     );
   }
 
@@ -46,7 +47,7 @@ export class MemStorage implements IStorage {
         ...post,
         posted: true,
         postedAt: new Date(),
-        error: null, // Clear any previous errors
+        error: null,
       });
     } else {
       log(`Post ${id} not found for marking as posted`, 'storage');
@@ -68,7 +69,20 @@ export class MemStorage implements IStorage {
     }
   }
 
-  // Clear error state from all posts before attempting a new post
+  async markAsSkipped(id: number): Promise<void> {
+    const post = this.posts.get(id);
+    if (post) {
+      log(`Marking post ${id} as skipped`, 'storage');
+      this.posts.set(id, {
+        ...post,
+        skipped: true,
+        error: null,
+      });
+    } else {
+      log(`Post ${id} not found for marking as skipped`, 'storage');
+    }
+  }
+
   async clearErrors(): Promise<void> {
     log('Clearing error states from all posts', 'storage');
     for (const [id, post] of this.posts.entries()) {
@@ -85,11 +99,9 @@ export class MemStorage implements IStorage {
     try {
       log(`Reading JSON file from: ${filePath}`, 'storage');
 
-      // Read the file content
       const data = await fs.readFile(filePath, 'utf-8');
       log(`File content length: ${data.length} characters`, 'storage');
 
-      // Clean the data and parse JSON
       const cleanData = data.trim();
       log(`Cleaned data length: ${cleanData.length} characters`, 'storage');
 
@@ -116,7 +128,9 @@ export class MemStorage implements IStorage {
           promoText: listing.promo_text,
           posted: false,
           postedAt: null,
+          scheduledTime: null,
           error: null,
+          skipped: false,
         };
         this.posts.set(post.id, post);
         log(`Added listing: ${post.name}`, 'storage');
@@ -139,9 +153,7 @@ export class MemStorage implements IStorage {
       isActive: true
     };
 
-    // Update scheduled times for all posts
     await this.updatePostScheduledTimes(config.interval);
-
     return this.scheduleConfig;
   }
 
@@ -153,7 +165,7 @@ export class MemStorage implements IStorage {
     if (!this.scheduleConfig) return;
 
     const unpostedPosts = Array.from(this.posts.values())
-      .filter(post => !post.posted)
+      .filter(post => !post.posted && !post.skipped)
       .sort((a, b) => a.id - b.id);
 
     let scheduledTime = new Date(this.scheduleConfig.startTime);
@@ -171,13 +183,11 @@ export class MemStorage implements IStorage {
 
   async getPostsByStatus(posted: boolean): Promise<Post[]> {
     return Array.from(this.posts.values())
-      .filter(post => post.posted === posted)
+      .filter(post => post.posted === posted && !post.skipped)
       .sort((a, b) => {
         if (posted) {
-          // Sort posted tweets by posted time
           return (b.postedAt?.getTime() || 0) - (a.postedAt?.getTime() || 0);
         } else {
-          // Sort pending tweets by scheduled time
           return (a.scheduledTime?.getTime() || 0) - (b.scheduledTime?.getTime() || 0);
         }
       });

@@ -25,6 +25,7 @@ export const posts = pgTable("posts", {
   postedAt: timestamp("posted_at"),
   scheduledTime: timestamp("scheduled_time"),
   error: text("error"),
+  skipped: boolean("skipped").default(false),
 });
 
 // Create a custom schema that accepts ISO strings for dates
@@ -42,6 +43,7 @@ export const insertPostSchema = createInsertSchema(posts).omit({
   postedAt: true,
   scheduledTime: true,
   error: true,
+  skipped: true,
 });
 
 export type InsertScheduleConfig = z.infer<typeof insertScheduleConfigSchema>;

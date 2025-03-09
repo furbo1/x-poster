@@ -5,6 +5,8 @@ import { startScheduler } from "./services/scheduler";
 import { postTweet, verifyTwitterCredentials } from "./services/twitter";
 import { log } from "./vite";
 import { insertScheduleConfigSchema } from "@shared/schema";
+import path from "path";
+import fs from "fs/promises";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Get all posts
@@ -12,6 +14,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const posts = await storage.getAllPosts();
       res.json(posts);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Skip a post
+  app.post("/api/posts/:id/skip", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.markAsSkipped(id);
+
+      // After skipping, update the schedule times for remaining posts
+      const config = await storage.getActiveScheduleConfig();
+      if (config) {
+        await storage.updatePostScheduledTimes(config.interval);
+      }
+
+      res.json({ message: "Post skipped successfully" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Upload new JSON file
+  app.post("/api/posts/upload", async (req, res) => {
+    try {
+      const fileContent = req.body;
+      if (!Array.isArray(fileContent)) {
+        return res.status(400).json({ message: "Invalid JSON format. Expected an array of listings." });
+      }
+
+      // Validate the format of each listing
+      const requiredFields = ['name', 'category', 'location', 'revenue', 'monthly_profit', 'profit_margin', 'promo_text'];
+      const missingFields = fileContent.some(listing => 
+        !requiredFields.every(field => listing.hasOwnProperty(field))
+      );
+
+      if (missingFields) {
+        return res.status(400).json({ 
+          message: "Invalid listing format. Each listing must include: " + requiredFields.join(", ")
+        });
+      }
+
+      // Save the file
+      const timestamp = new Date().getTime();
+      const fileName = `listings-${timestamp}.json`;
+      const filePath = path.join(process.cwd(), "attached_assets", fileName);
+
+      await fs.writeFile(filePath, JSON.stringify(fileContent, null, 2));
+      await storage.initializeFromJson(filePath);
+
+      // Update schedule if exists
+      const config = await storage.getActiveScheduleConfig();
+      if (config) {
+        await storage.updatePostScheduledTimes(config.interval);
+      }
+
+      res.json({ message: "Posts uploaded and initialized successfully" });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -60,7 +120,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Diagnostic endpoint for testing Twitter auth
   app.get("/api/twitter/test-auth", async (_req, res) => {
     try {
-      const authStatus = await testAuth();
+      const authStatus = await verifyTwitterCredentials();
       res.json(authStatus);
     } catch (error: any) {
       res.status(500).json({
