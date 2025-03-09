@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { startScheduler } from "./services/scheduler";
-import { postTweet, verifyTwitterCredentials } from "./services/twitter";
+import { postTweet, verifyTwitterCredentials, testAuth } from "./services/twitter";
 import { log } from "./vite";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -13,6 +13,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(posts);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Diagnostic endpoint for testing Twitter auth
+  app.get("/api/twitter/test-auth", async (_req, res) => {
+    try {
+      const authStatus = await testAuth();
+      res.json(authStatus);
+    } catch (error: any) {
+      res.status(500).json({
+        message: "Authentication test failed",
+        error: error.message,
+        details: error.data
+      });
     }
   });
 
