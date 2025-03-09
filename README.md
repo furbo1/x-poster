@@ -24,6 +24,8 @@ A secure Twitter posting platform with restricted authentication.
    - TWITTER_ACCESS_TOKEN
    - TWITTER_ACCESS_SECRET
    - SESSION_SECRET (will be auto-generated)
+   - NODE_OPTIONS (set to "--import")
+   - NODE_ENV (set to "production")
 
 The render.yaml file will handle the rest of the configuration automatically.
 
