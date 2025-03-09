@@ -7,10 +7,14 @@ import { log } from "./vite";
 import { insertScheduleConfigSchema } from "@shared/schema";
 import path from "path";
 import fs from "fs/promises";
+import { setupAuth, requireAuth } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Get all posts
-  app.get("/api/posts", async (_req, res) => {
+  // Set up authentication
+  setupAuth(app);
+
+  // Protected routes - require authentication
+  app.get("/api/posts", requireAuth, async (_req, res) => {
     try {
       const posts = await storage.getAllPosts();
       res.json(posts);
@@ -19,13 +23,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Skip a post
-  app.post("/api/posts/:id/skip", async (req, res) => {
+  app.post("/api/posts/:id/skip", requireAuth, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       await storage.markAsSkipped(id);
 
-      // After skipping, update the schedule times for remaining posts
       const config = await storage.getActiveScheduleConfig();
       if (config) {
         await storage.updatePostScheduledTimes(config.interval);
@@ -37,15 +39,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Upload new JSON file
-  app.post("/api/posts/upload", async (req, res) => {
+  app.post("/api/posts/upload", requireAuth, async (req, res) => {
     try {
       const fileContent = req.body;
       if (!Array.isArray(fileContent)) {
         return res.status(400).json({ message: "Invalid JSON format. Expected an array of listings." });
       }
 
-      // Validate the format of each listing
       const requiredFields = ['name', 'category', 'location', 'revenue', 'monthly_profit', 'profit_margin', 'promo_text'];
       const missingFields = fileContent.some(listing => 
         !requiredFields.every(field => listing.hasOwnProperty(field))
@@ -57,7 +57,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Save the file
       const timestamp = new Date().getTime();
       const fileName = `listings-${timestamp}.json`;
       const filePath = path.join(process.cwd(), "attached_assets", fileName);
@@ -65,7 +64,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await fs.writeFile(filePath, JSON.stringify(fileContent, null, 2));
       await storage.initializeFromJson(filePath);
 
-      // Update schedule if exists
       const config = await storage.getActiveScheduleConfig();
       if (config) {
         await storage.updatePostScheduledTimes(config.interval);
@@ -77,8 +75,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get current schedule configuration
-  app.get("/api/schedule", async (_req, res) => {
+  app.get("/api/schedule", requireAuth, async (_req, res) => {
     try {
       const config = await storage.getActiveScheduleConfig();
       res.json(config || null);
@@ -87,12 +84,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update schedule configuration
-  app.post("/api/schedule", async (req, res) => {
+  app.post("/api/schedule", requireAuth, async (req, res) => {
     try {
       const data = insertScheduleConfigSchema.parse(req.body);
 
-      // Validate time range
       const start = new Date(data.startTime);
       const end = new Date(data.endTime);
 
@@ -117,24 +112,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Diagnostic endpoint for testing Twitter auth
-  app.get("/api/twitter/test-auth", async (_req, res) => {
+  app.post("/api/posts/cancel-all", requireAuth, async (_req, res) => {
+    try {
+      await storage.markAllAsSkipped();
+      res.json({ message: "All pending posts cancelled successfully" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/twitter/test-auth", requireAuth, async (_req, res) => {
     try {
       const authStatus = await verifyTwitterCredentials();
       res.json(authStatus);
     } catch (error: any) {
       res.status(500).json({
-        message: "Authentication test failed",
+        message: "Twitter authentication test failed",
         error: error.message,
         details: error.data
       });
     }
   });
 
-  // Test endpoint to trigger a post immediately
-  app.post("/api/posts/test", async (_req, res) => {
+  app.post("/api/posts/test", requireAuth, async (_req, res) => {
     try {
-      // First verify credentials
       const isVerified = await verifyTwitterCredentials();
       if (!isVerified) {
         return res.status(401).json({ 
@@ -149,8 +150,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       log(`Test posting tweet for listing: ${post.name}`, "twitter");
-
-      // Clear any previous errors before attempting new post
       await storage.clearErrors();
 
       try {
@@ -169,7 +168,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           log(`Error details: ${JSON.stringify(twitterError.data)}`, "twitter");
         }
 
-        // Mark only this specific post as failed
         await storage.markAsFailed(post.id, errorMessage);
 
         res.status(500).json({ 
@@ -184,16 +182,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: error.message,
         status: "error" 
       });
-    }
-  });
-
-  // Cancel all pending posts
-  app.post("/api/posts/cancel-all", async (_req, res) => {
-    try {
-      await storage.markAllAsSkipped();
-      res.json({ message: "All pending posts cancelled successfully" });
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
     }
   });
 

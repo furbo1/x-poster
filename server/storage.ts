@@ -1,7 +1,11 @@
-import { posts, type Post, type InsertPost, type ScheduleConfig, type InsertScheduleConfig } from "@shared/schema";
+import { posts, users, type Post, type InsertPost, type ScheduleConfig, type InsertScheduleConfig, type User, type InsertUser } from "@shared/schema";
 import fs from "fs/promises";
 import path from "path";
 import { log } from "./vite";
+import session from "express-session";
+import createMemoryStore from "memorystore";
+
+const MemoryStore = createMemoryStore(session);
 
 export interface IStorage {
   getAllPosts(): Promise<Post[]>;
@@ -12,22 +16,38 @@ export interface IStorage {
   initializeFromJson(filePath: string): Promise<void>;
   clearErrors(): Promise<void>;
 
-  // New scheduling methods
+  // Schedule methods
   saveScheduleConfig(config: InsertScheduleConfig): Promise<ScheduleConfig>;
   getActiveScheduleConfig(): Promise<ScheduleConfig | undefined>;
   updatePostScheduledTimes(interval: number): Promise<void>;
   getPostsByStatus(posted: boolean): Promise<Post[]>;
-  markAllAsSkipped(): Promise<void>; // Added method
+  markAllAsSkipped(): Promise<void>;
+
+  // User methods
+  createUser(user: InsertUser): Promise<User>;
+  getUserByUsername(username: string): Promise<User | undefined>;
+  getUser(id: number): Promise<User | undefined>;
+
+  // Session store
+  sessionStore: session.Store;
 }
 
 export class MemStorage implements IStorage {
   private posts: Map<number, Post>;
+  private users: Map<number, User>;
   private currentId: number;
+  private currentUserId: number;
   private scheduleConfig?: ScheduleConfig;
+  readonly sessionStore: session.Store;
 
   constructor() {
     this.posts = new Map();
+    this.users = new Map();
     this.currentId = 1;
+    this.currentUserId = 1;
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000, // prune expired entries every 24h
+    });
   }
 
   async getAllPosts(): Promise<Post[]> {
@@ -206,6 +226,26 @@ export class MemStorage implements IStorage {
         error: null,
       });
     }
+  }
+
+  async createUser(userData: InsertUser): Promise<User> {
+    const user: User = {
+      id: this.currentUserId++,
+      ...userData,
+      createdAt: new Date(),
+    };
+    this.users.set(user.id, user);
+    return user;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.username === username
+    );
+  }
+
+  async getUser(id: number): Promise<User | undefined> {
+    return this.users.get(id);
   }
 }
 
