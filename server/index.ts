@@ -1,7 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { createServer } from "http";
 
 const app = express();
 app.use(express.json());
@@ -37,6 +36,7 @@ app.use((req, res, next) => {
   next();
 });
 
+// Setup routes and start server
 (async () => {
   const server = await registerRoutes(app);
 
@@ -55,9 +55,6 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // Export the Express app for deployment platforms
-  export default app;
-
   // Only listen in development
   if (process.env.NODE_ENV === "development") {
     server.listen({
@@ -72,3 +69,6 @@ app.use((req, res, next) => {
   log(`Failed to start server: ${err}`);
   process.exit(1);
 });
+
+// Export the Express app for deployment platforms
+export default app;

@@ -6,7 +6,7 @@ services:
     buildCommand: >
       NODE_OPTIONS="--import" npm install &&
       npm run build &&
-      esbuild server/index.ts --platform=node --packages=external --format=esm --bundle --outfile=dist/index.js
+      esbuild server/index.ts --platform=node --packages=external --format=esm --bundle --outfile=dist/index.js --conditions=module,import,default
     startCommand: NODE_ENV=production NODE_OPTIONS="--import" node dist/index.js
     envVars:
       - key: NODE_ENV
