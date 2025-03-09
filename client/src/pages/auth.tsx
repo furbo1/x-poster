@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
+import { useEffect } from "react";
 
 const authSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
@@ -18,14 +19,14 @@ const authSchema = z.object({
 type AuthFormData = z.infer<typeof authSchema>;
 
 export default function AuthPage() {
-  const [_, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { loginMutation, registerMutation, user } = useAuth();
 
-  // Redirect if already logged in
-  if (user) {
-    setLocation("/");
-    return null;
-  }
+  useEffect(() => {
+    if (user) {
+      setLocation("/");
+    }
+  }, [user, setLocation]);
 
   const form = useForm<AuthFormData>({
     resolver: zodResolver(authSchema),
@@ -41,7 +42,6 @@ export default function AuthPage() {
     } else {
       await registerMutation.mutateAsync(data);
     }
-    setLocation("/");
   };
 
   return (
