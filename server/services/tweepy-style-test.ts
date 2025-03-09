@@ -3,10 +3,10 @@ import { TwitterApi } from "twitter-api-v2";
 async function testTweepyStyle() {
   try {
     // Define credentials directly like Tweepy example
-    const consumer_key = "koQUmGeIYEipj9jdRahkSL6lQ";
-    const consumer_secret = "HkeQ1ZxmZt3z75kTUWshryzrvrxxkwWd0Izkl5UumOMwD8wi6C";
-    const access_token = "1460679066672115714-jJlvyCdgxrhv5dAuBeOMUYxlWYE19C";
-    const access_token_secret = "do3Q9gsQJyXg9OY5GgrbG1P0GvGprUEaelLipns1PypSs";
+    const consumer_key = "4p0ZtIt0T0aZNoW3zgyF4gK1j";
+    const consumer_secret = "GST88nNkZE1bdMcQAcYVwwunWKA5nbSIzuAa0XrwvTHxfzAkVn";
+    const access_token = "1888979033922076672-Qw13Rdiq1OeyJ9d2vXSzbcGaIb4DLY";
+    const access_token_secret = "okK2j2Jj99j6x3WCd718adZfNOGUDWP48ClPB1lyYl8ZW";
 
     console.log("Initializing with credentials:");
     console.log(`Consumer key: ${consumer_key.substring(0, 4)}...${consumer_key.substring(consumer_key.length - 4)}`);
@@ -32,8 +32,8 @@ async function testTweepyStyle() {
     console.log(`Logged in as: ${user.data.username}`);
 
     // Post test tweet using v2 endpoint
-    console.log("\nPosting test tweet...");
-    const tweet = await v2Client.tweet("Test tweet from Twitter API v2 - March 9, 2025");
+    console.log("\nPosting tweet...");
+    const tweet = await v2Client.tweet("Hello winners!");
     console.log(`Tweet posted successfully! ID: ${tweet.data.id}`);
 
     return true;
