@@ -3,7 +3,10 @@ services:
     name: twitter-posting-platform
     env: node
     plan: free
-    buildCommand: NODE_OPTIONS="--import" npm install && npm run build
+    buildCommand: >
+      NODE_OPTIONS="--import" npm install &&
+      npm run build &&
+      esbuild server/index.ts --platform=node --packages=external --format=esm --bundle --outfile=dist/index.js
     startCommand: NODE_ENV=production NODE_OPTIONS="--import" node dist/index.js
     envVars:
       - key: NODE_ENV
