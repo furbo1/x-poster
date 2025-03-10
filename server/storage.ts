@@ -7,7 +7,9 @@ import createMemoryStore from "memorystore";
 
 const MemoryStore = createMemoryStore(session);
 
-const DATA_FILE = path.join(process.cwd(), "data/state.json");
+const DATA_FILE = process.env.NODE_ENV === "production" 
+  ? "/data/state.json"
+  : path.join(process.cwd(), "data/state.json");
 
 export interface IStorage {
   getAllPosts(): Promise<Post[]>;
