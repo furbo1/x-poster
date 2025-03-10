@@ -13,9 +13,31 @@ import { randomBytes } from "crypto";
 import { hashPassword } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Health check endpoint for Render
-  app.get("/api/health", (_req, res) => {
-    res.status(200).json({ status: "healthy" });
+  // Health check endpoint for Render/UptimeRobot
+  app.get("/api/health", async (_req, res) => {
+    try {
+      const config = await storage.getActiveScheduleConfig();
+      const posts = await storage.getAllPosts();
+      const nextPost = posts.find(p => !p.posted && !p.skipped && p.scheduledTime)
+      
+      const response: any = { status: "healthy" };
+      
+      if (nextPost && nextPost.scheduledTime) {
+        const now = new Date();
+        const nextPostTime = new Date(nextPost.scheduledTime);
+        const minutesUntilNextPost = Math.round((nextPostTime.getTime() - now.getTime()) / (60 * 1000));
+        
+        response.nextPost = {
+          scheduledTime: nextPost.scheduledTime,
+          minutesUntilNextPost,
+          name: nextPost.name
+        };
+      }
+      
+      res.json(response);
+    } catch (error: any) {
+      res.status(500).json({ status: "unhealthy", error: error.message });
+    }
   });
 
   // Set up authentication

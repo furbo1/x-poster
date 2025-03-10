@@ -17,7 +17,10 @@ export function startScheduler() {
       }
 
       const now = new Date();
-      if (now < config.startTime || now > config.endTime) {
+      const startTime = new Date(config.startTime);
+      const endTime = new Date(config.endTime);
+
+      if (now < startTime || now > endTime) {
         log("Current time is outside scheduled posting window", "scheduler");
         return;
       }
@@ -30,7 +33,7 @@ export function startScheduler() {
       }
 
       // Check if it's time to post
-      if (!post.scheduledTime || now < post.scheduledTime) {
+      if (!post.scheduledTime || now < new Date(post.scheduledTime)) {
         log(`Next post scheduled for: ${post.scheduledTime}`, "scheduler");
         return;
       }

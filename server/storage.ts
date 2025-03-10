@@ -7,6 +7,8 @@ import createMemoryStore from "memorystore";
 
 const MemoryStore = createMemoryStore(session);
 
+const DATA_FILE = path.join(process.cwd(), "data/state.json");
+
 export interface IStorage {
   getAllPosts(): Promise<Post[]>;
   getNextUnpostedItem(): Promise<Post | undefined>;
@@ -53,7 +55,51 @@ export class MemStorage implements IStorage {
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000, // prune expired entries every 24h
     });
+    this.loadState();
     log('MemStorage initialized successfully', 'storage');
+  }
+
+  private async saveState() {
+    try {
+      const state = {
+        posts: Array.from(this.posts.values()),
+        users: Array.from(this.users.values()),
+        currentId: this.currentId,
+        currentUserId: this.currentUserId,
+        scheduleConfig: this.scheduleConfig
+      };
+      
+      await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
+      await fs.writeFile(DATA_FILE, JSON.stringify(state, null, 2));
+      log('State saved successfully', 'storage');
+    } catch (error: any) {
+      log(`Failed to save state: ${error.message}`, 'storage');
+    }
+  }
+
+  private async loadState() {
+    try {
+      const data = await fs.readFile(DATA_FILE, 'utf-8');
+      const state = JSON.parse(data);
+      
+      this.posts = new Map(state.posts.map((post: Post) => [post.id, {
+        ...post,
+        scheduledTime: post.scheduledTime ? new Date(post.scheduledTime) : null,
+        postedAt: post.postedAt ? new Date(post.postedAt) : null
+      }]));
+      this.users = new Map(state.users.map((user: User) => [user.id, user]));
+      this.currentId = state.currentId;
+      this.currentUserId = state.currentUserId;
+      this.scheduleConfig = state.scheduleConfig ? {
+        ...state.scheduleConfig,
+        startTime: new Date(state.scheduleConfig.startTime),
+        endTime: new Date(state.scheduleConfig.endTime)
+      } : undefined;
+      
+      log('State loaded successfully', 'storage');
+    } catch (error: any) {
+      log(`No existing state found or failed to load: ${error.message}`, 'storage');
+    }
   }
 
   async getAllPosts(): Promise<Post[]> {
@@ -69,44 +115,28 @@ export class MemStorage implements IStorage {
   async markAsPosted(id: number): Promise<void> {
     const post = this.posts.get(id);
     if (post) {
-      log(`Marking post ${id} as posted`, 'storage');
-      this.posts.set(id, {
-        ...post,
-        posted: true,
-        postedAt: new Date(),
-        error: null,
-      });
-    } else {
-      log(`Post ${id} not found for marking as posted`, 'storage');
+      post.posted = true;
+      post.postedAt = new Date();
+      this.posts.set(id, post);
+      await this.saveState();
     }
   }
 
   async markAsFailed(id: number, error: string): Promise<void> {
     const post = this.posts.get(id);
     if (post) {
-      log(`Marking post ${id} as failed: ${error}`, 'storage');
-      this.posts.set(id, {
-        ...post,
-        error,
-        posted: false,
-        postedAt: null,
-      });
-    } else {
-      log(`Post ${id} not found for marking as failed`, 'storage');
+      post.error = error;
+      this.posts.set(id, post);
+      await this.saveState();
     }
   }
 
   async markAsSkipped(id: number): Promise<void> {
     const post = this.posts.get(id);
     if (post) {
-      log(`Marking post ${id} as skipped`, 'storage');
-      this.posts.set(id, {
-        ...post,
-        skipped: true,
-        error: null,
-      });
-    } else {
-      log(`Post ${id} not found for marking as skipped`, 'storage');
+      post.skipped = true;
+      this.posts.set(id, post);
+      await this.saveState();
     }
   }
 
@@ -120,6 +150,7 @@ export class MemStorage implements IStorage {
         });
       }
     }
+    await this.saveState();
   }
 
   async initializeFromJson(filePath: string): Promise<void> {
@@ -164,6 +195,7 @@ export class MemStorage implements IStorage {
       }
 
       log(`Successfully initialized ${this.posts.size} listings`, 'storage');
+      await this.saveState();
     } catch (error: any) {
       const errorMessage = `Failed to initialize from JSON: ${error.message}`;
       log(errorMessage, 'storage');
@@ -181,6 +213,7 @@ export class MemStorage implements IStorage {
     };
 
     await this.updatePostScheduledTimes(config.interval);
+    await this.saveState();
     return this.scheduleConfig;
   }
 
@@ -206,6 +239,7 @@ export class MemStorage implements IStorage {
         scheduledTime = new Date(scheduledTime.getTime() + interval * 60000);
       }
     }
+    await this.saveState();
   }
 
   async getPostsByStatus(posted: boolean): Promise<Post[]> {
@@ -221,17 +255,12 @@ export class MemStorage implements IStorage {
   }
 
   async markAllAsSkipped(): Promise<void> {
-    log('Marking all pending posts as skipped', 'storage');
-    const pendingPosts = Array.from(this.posts.values())
-      .filter(post => !post.posted && !post.error && !post.skipped);
-
-    for (const post of pendingPosts) {
-      this.posts.set(post.id, {
-        ...post,
-        skipped: true,
-        error: null,
-      });
+    for (const post of this.posts.values()) {
+      if (!post.posted) {
+        post.skipped = true;
+      }
     }
+    await this.saveState();
   }
 
   async createUser(userData: InsertUser): Promise<User> {
@@ -243,6 +272,7 @@ export class MemStorage implements IStorage {
       createdAt: new Date(),
     };
     this.users.set(user.id, user);
+    await this.saveState();
     return user;
   }
 
@@ -267,6 +297,7 @@ export class MemStorage implements IStorage {
         resetToken: token,
         resetTokenExpiry: expiry,
       });
+      await this.saveState();
     }
   }
 
@@ -286,6 +317,7 @@ export class MemStorage implements IStorage {
         resetToken: null,
         resetTokenExpiry: null,
       });
+      await this.saveState();
     }
   }
 

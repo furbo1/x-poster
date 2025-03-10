@@ -59,8 +59,8 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 if (process.env.NODE_ENV === "development") {
   registerRoutes(app).then(server => {
     setupVite(app, server).then(() => {
-      server.listen(5000, "0.0.0.0", () => {
-        log("Development server started on port 5000");
+      server.listen(3000, "0.0.0.0", () => {
+        log("Development server started on port 3000");
       });
     });
   }).catch(err => {
@@ -70,8 +70,9 @@ if (process.env.NODE_ENV === "development") {
 } else {
   registerRoutes(app).then(server => {
     serveStatic(app);
-    server.listen(process.env.PORT || 5000, "0.0.0.0", () => {
-      log(`Production server started on port ${process.env.PORT || 5000}`);
+    const port = parseInt(process.env.PORT || "3000", 10);
+    server.listen(port, "0.0.0.0", () => {
+      log(`Production server started on port ${port}`);
     });
   }).catch(err => {
     log(`Failed to start production server: ${err.stack}`);
