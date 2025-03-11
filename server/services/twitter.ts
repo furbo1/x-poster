@@ -51,56 +51,96 @@ export async function testAuth() {
   }
 }
 
-// Rate limit tracking
-let lastPostTime: Date | null = null;
-let rateLimitResetTime: Date | null = null;
+// Twitter Free Tier Limits
+const TWEETS_PER_DAY = 17;
+const ACTIVE_HOURS = {
+  start: 8, // 8 AM
+  end: 23, // 11 PM
+  endMinutes: 55 // 55 minutes
+};
 
-const MIN_POST_INTERVAL = 45 * 60 * 1000; // 45 minutes in milliseconds
-const RATE_LIMIT_WINDOW = 3 * 60 * 60 * 1000; // 3 hours in milliseconds
+// Calculate active minutes per day
+const ACTIVE_MINUTES_PER_DAY = (ACTIVE_HOURS.end - ACTIVE_HOURS.start) * 60 + ACTIVE_HOURS.endMinutes;
+const MIN_INTERVAL = Math.floor(ACTIVE_MINUTES_PER_DAY / TWEETS_PER_DAY); // minutes between tweets during active hours
+
+let lastPostTime: Date | null = null;
+let dailyTweetCount = 0;
+let dailyCountResetTime: Date | null = null;
+
+function isWithinActiveHours(date: Date): boolean {
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+  
+  if (hours < ACTIVE_HOURS.start) return false;
+  if (hours > ACTIVE_HOURS.end) return false;
+  if (hours === ACTIVE_HOURS.end && minutes > ACTIVE_HOURS.endMinutes) return false;
+  
+  return true;
+}
+
+function getNextActiveTime(date: Date): Date {
+  const next = new Date(date);
+  
+  if (next.getHours() < ACTIVE_HOURS.start) {
+    next.setHours(ACTIVE_HOURS.start, 0, 0, 0);
+  } else if (next.getHours() >= ACTIVE_HOURS.end && next.getMinutes() > ACTIVE_HOURS.endMinutes) {
+    next.setDate(next.getDate() + 1);
+    next.setHours(ACTIVE_HOURS.start, 0, 0, 0);
+  }
+  
+  return next;
+}
 
 export async function postTweet(text: string): Promise<void> {
   const now = new Date();
 
-  // Check if we're still in rate limit window
-  if (rateLimitResetTime && now < rateLimitResetTime) {
-    const waitTimeSeconds = Math.ceil((rateLimitResetTime.getTime() - now.getTime()) / 1000);
-    throw new Error(`Rate limit window active. Try again in ${waitTimeSeconds} seconds.`);
+  // Check if we're within active hours
+  if (!isWithinActiveHours(now)) {
+    const nextActive = getNextActiveTime(now);
+    const waitMinutes = Math.ceil((nextActive.getTime() - now.getTime()) / (60 * 1000));
+    throw new Error(`Outside active hours (${ACTIVE_HOURS.start}:00-${ACTIVE_HOURS.end}:${ACTIVE_HOURS.endMinutes}). Next window opens in ${waitMinutes} minutes.`);
   }
 
-  // Ensure minimum interval between posts
+  // Reset daily count if it's a new day and we're in active hours
+  const startOfDay = new Date(now);
+  startOfDay.setHours(ACTIVE_HOURS.start, 0, 0, 0);
+  if (!dailyCountResetTime || now >= dailyCountResetTime) {
+    dailyTweetCount = 0;
+    dailyCountResetTime = new Date(startOfDay);
+    dailyCountResetTime.setDate(dailyCountResetTime.getDate() + 1);
+  }
+
+  // Check if we've hit the daily limit
+  if (dailyTweetCount >= TWEETS_PER_DAY) {
+    const nextReset = new Date(dailyCountResetTime);
+    nextReset.setHours(ACTIVE_HOURS.start, 0, 0, 0);
+    const waitMinutes = Math.ceil((nextReset.getTime() - now.getTime()) / (60 * 1000));
+    throw new Error(`Daily tweet limit (${TWEETS_PER_DAY}) reached. Next window opens in ${waitMinutes} minutes.`);
+  }
+
+  // Check minimum interval during active hours
   if (lastPostTime) {
-    const timeSinceLastPost = now.getTime() - lastPostTime.getTime();
-    if (timeSinceLastPost < MIN_POST_INTERVAL) {
-      const waitTimeMinutes = Math.ceil((MIN_POST_INTERVAL - timeSinceLastPost) / (60 * 1000));
-      throw new Error(`Please wait ${waitTimeMinutes} minutes before posting again.`);
+    const timeSinceLastPost = Math.floor((now.getTime() - lastPostTime.getTime()) / (60 * 1000));
+    if (timeSinceLastPost < MIN_INTERVAL) {
+      throw new Error(`Please wait ${MIN_INTERVAL - timeSinceLastPost} minutes before next tweet (minimum interval during active hours).`);
     }
   }
 
-  const client = new TwitterApi({
-    appKey: process.env.TWITTER_API_KEY!,
-    appSecret: process.env.TWITTER_API_SECRET!,
-    accessToken: process.env.TWITTER_ACCESS_TOKEN!,
-    accessSecret: process.env.TWITTER_ACCESS_SECRET!,
-  });
+  const client = getTwitterClient();
 
   try {
     log(`Attempting to post tweet: "${text.substring(0, 20)}..."`, "twitter");
-    await client.v2.tweet(text);
-    
-    // Update last post time on success
+    await client.tweet(text);
     lastPostTime = now;
-    rateLimitResetTime = null;
-    
-    log("Tweet posted successfully", "twitter");
+    dailyTweetCount++;
+    log(`Tweet posted successfully (${dailyTweetCount}/${TWEETS_PER_DAY} today, next available in ${MIN_INTERVAL} minutes)`, "twitter");
   } catch (error: any) {
-    // Handle rate limit errors
     if (error.code === 429 || (error.data && error.data.status === 429)) {
-      rateLimitResetTime = new Date(now.getTime() + RATE_LIMIT_WINDOW);
-      const waitTimeMinutes = Math.ceil(RATE_LIMIT_WINDOW / (60 * 1000));
-      log(`Rate limit hit, will retry in ${waitTimeMinutes} minutes`, "twitter");
-      throw new Error(`Rate limit hit. Next retry in ${RATE_LIMIT_WINDOW / 1000} seconds.`);
+      const retryAfter = error.rateLimit?.reset ? new Date(error.rateLimit.reset * 1000) : new Date(now.getTime() + MIN_INTERVAL * 60 * 1000);
+      const waitTimeMinutes = Math.ceil((retryAfter.getTime() - now.getTime()) / (60 * 1000));
+      log(`Twitter rate limit hit, retry after ${waitTimeMinutes} minutes`, "twitter");
+      throw new Error(`Twitter's rate limit reached. Please try again in ${waitTimeMinutes} minutes.`);
     }
-    
     throw error;
   }
 }
