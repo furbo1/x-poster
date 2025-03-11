@@ -11,32 +11,70 @@ import { setupAuth, requireAuth } from "./auth";
 import { resetPasswordSchema, newPasswordSchema } from "@shared/schema";
 import { randomBytes } from "crypto";
 import { hashPassword } from "./auth";
+import { ACTIVE_HOURS, isWithinActiveHours } from "./services/scheduler";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Health check endpoint for Render/UptimeRobot
+  // Health check endpoint for monitoring services
   app.get("/api/health", async (_req, res) => {
     try {
       const config = await storage.getActiveScheduleConfig();
       const posts = await storage.getAllPosts();
-      const nextPost = posts.find(p => !p.posted && !p.skipped && p.scheduledTime)
+      const now = new Date();
       
-      const response: any = { status: "healthy" };
+      // Find next unposted item
+      const nextPost = posts.find(p => !p.posted && !p.skipped && p.scheduledTime);
+      const response: any = { 
+        status: "healthy",
+        time: now.toISOString(),
+        activeHours: {
+          start: ACTIVE_HOURS.start,
+          end: ACTIVE_HOURS.end,
+          endMinutes: ACTIVE_HOURS.endMinutes,
+          isCurrentlyActive: isWithinActiveHours(now)
+        }
+      };
       
       if (nextPost && nextPost.scheduledTime) {
-        const now = new Date();
         const nextPostTime = new Date(nextPost.scheduledTime);
         const minutesUntilNextPost = Math.round((nextPostTime.getTime() - now.getTime()) / (60 * 1000));
         
         response.nextPost = {
           scheduledTime: nextPost.scheduledTime,
           minutesUntilNextPost,
-          name: nextPost.name
+          name: nextPost.name,
+          isWithinActiveHours: isWithinActiveHours(nextPostTime)
         };
+
+        // If post is coming up soon, perform a "wake up" check
+        if (minutesUntilNextPost <= 10) {
+          response.wakeUpCheck = {
+            schedulerRunning: true,
+            lastCheck: now.toISOString()
+          };
+          
+          // Force scheduler to check (this keeps the service active)
+          const testPost = await storage.getNextUnpostedItem();
+          if (testPost) {
+            response.wakeUpCheck.nextPostFound = true;
+          }
+        }
       }
+      
+      // Add some stats
+      response.stats = {
+        totalPosts: posts.length,
+        postedCount: posts.filter(p => p.posted).length,
+        pendingCount: posts.filter(p => !p.posted && !p.skipped).length,
+        skippedCount: posts.filter(p => p.skipped).length
+      };
       
       res.json(response);
     } catch (error: any) {
-      res.status(500).json({ status: "unhealthy", error: error.message });
+      res.status(500).json({ 
+        status: "unhealthy", 
+        error: error.message,
+        time: new Date().toISOString()
+      });
     }
   });
 

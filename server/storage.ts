@@ -4,6 +4,7 @@ import path from "path";
 import { log } from "./vite";
 import session from "express-session";
 import createMemoryStore from "memorystore";
+import { ACTIVE_HOURS, isWithinActiveHours } from "./services/scheduler";
 
 const MemoryStore = createMemoryStore(session);
 
@@ -231,14 +232,36 @@ export class MemStorage implements IStorage {
       .sort((a, b) => a.id - b.id);
 
     let scheduledTime = new Date(this.scheduleConfig.startTime);
+    
+    // Ensure we start during active hours
+    if (scheduledTime.getHours() < ACTIVE_HOURS.start) {
+      scheduledTime.setHours(ACTIVE_HOURS.start, 0, 0, 0);
+    }
 
     for (const post of unpostedPosts) {
       if (scheduledTime <= new Date(this.scheduleConfig.endTime)) {
-        this.posts.set(post.id, {
-          ...post,
-          scheduledTime
-        });
-        scheduledTime = new Date(scheduledTime.getTime() + interval * 60000);
+        // Skip non-active hours
+        while (
+          scheduledTime <= new Date(this.scheduleConfig.endTime) && 
+          !isWithinActiveHours(scheduledTime)
+        ) {
+          // If outside active hours, jump to next day's start time
+          if (scheduledTime.getHours() >= ACTIVE_HOURS.end) {
+            scheduledTime.setDate(scheduledTime.getDate() + 1);
+            scheduledTime.setHours(ACTIVE_HOURS.start, 0, 0, 0);
+          } else {
+            scheduledTime.setHours(ACTIVE_HOURS.start, 0, 0, 0);
+          }
+        }
+
+        // If we're still within the overall schedule window
+        if (scheduledTime <= new Date(this.scheduleConfig.endTime)) {
+          this.posts.set(post.id, {
+            ...post,
+            scheduledTime
+          });
+          scheduledTime = new Date(scheduledTime.getTime() + interval * 60000);
+        }
       }
     }
     await this.saveState();
