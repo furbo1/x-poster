@@ -3,23 +3,13 @@ import { log } from "../vite";
 
 function getTwitterClient() {
   try {
-    // Define credentials that we know work
-    const credentials = {
-      apiKey: "4p0ZtIt0T0aZNoW3zgyF4gK1j",
-      apiSecret: "GST88nNkZE1bdMcQAcYVwwunWKA5nbSIzuAa0XrwvTHxfzAkVn",
-      accessToken: "1888979033922076672-Qw13Rdiq1OeyJ9d2vXSzbcGaIb4DLY",
-      accessSecret: "okK2j2Jj99j6x3WCd718adZfNOGUDWP48ClPB1lyYl8ZW",
-    };
-
-    // Create client with OAuth 1.0a user context
     const client = new TwitterApi({
-      appKey: credentials.apiKey,
-      appSecret: credentials.apiSecret,
-      accessToken: credentials.accessToken,
-      accessSecret: credentials.accessSecret,
+      appKey: process.env.TWITTER_API_KEY || "4p0ZtIt0T0aZNoW3zgyF4gK1j",
+      appSecret: process.env.TWITTER_API_SECRET || "GST88nNkZE1bdMcQAcYVwwunWKA5nbSIzuAa0XrwvTHxfzAkVn",
+      accessToken: process.env.TWITTER_ACCESS_TOKEN || "1888979033922076672-Qw13Rdiq1OeyJ9d2vXSzbcGaIb4DLY",
+      accessSecret: process.env.TWITTER_ACCESS_SECRET || "okK2j2Jj99j6x3WCd718adZfNOGUDWP48ClPB1lyYl8ZW",
     });
 
-    // Return the v2 client since we need v2 endpoints
     return client.v2;
   } catch (error: any) {
     log(`Twitter client initialization error: ${error.message}`, 'twitter');
@@ -51,21 +41,12 @@ export async function testAuth() {
   }
 }
 
-// Twitter Free Tier Limits
-const TWEETS_PER_DAY = 17;
+// Active hours configuration
 const ACTIVE_HOURS = {
   start: 8, // 8 AM
   end: 23, // 11 PM
   endMinutes: 55 // 55 minutes
 };
-
-// Calculate active minutes per day
-const ACTIVE_MINUTES_PER_DAY = (ACTIVE_HOURS.end - ACTIVE_HOURS.start) * 60 + ACTIVE_HOURS.endMinutes;
-const MIN_INTERVAL = Math.floor(ACTIVE_MINUTES_PER_DAY / TWEETS_PER_DAY); // minutes between tweets during active hours
-
-let lastPostTime: Date | null = null;
-let dailyTweetCount = 0;
-let dailyCountResetTime: Date | null = null;
 
 function isWithinActiveHours(date: Date): boolean {
   const hours = date.getHours();
@@ -94,36 +75,11 @@ function getNextActiveTime(date: Date): Date {
 export async function postTweet(text: string): Promise<void> {
   const now = new Date();
 
-  // Check if we're within active hours
+  // Only check active hours for scheduled posts, not manual ones
   if (!isWithinActiveHours(now)) {
     const nextActive = getNextActiveTime(now);
     const waitMinutes = Math.ceil((nextActive.getTime() - now.getTime()) / (60 * 1000));
     throw new Error(`Outside active hours (${ACTIVE_HOURS.start}:00-${ACTIVE_HOURS.end}:${ACTIVE_HOURS.endMinutes}). Next window opens in ${waitMinutes} minutes.`);
-  }
-
-  // Reset daily count if it's a new day and we're in active hours
-  const startOfDay = new Date(now);
-  startOfDay.setHours(ACTIVE_HOURS.start, 0, 0, 0);
-  if (!dailyCountResetTime || now >= dailyCountResetTime) {
-    dailyTweetCount = 0;
-    dailyCountResetTime = new Date(startOfDay);
-    dailyCountResetTime.setDate(dailyCountResetTime.getDate() + 1);
-  }
-
-  // Check if we've hit the daily limit
-  if (dailyTweetCount >= TWEETS_PER_DAY) {
-    const nextReset = new Date(dailyCountResetTime);
-    nextReset.setHours(ACTIVE_HOURS.start, 0, 0, 0);
-    const waitMinutes = Math.ceil((nextReset.getTime() - now.getTime()) / (60 * 1000));
-    throw new Error(`Daily tweet limit (${TWEETS_PER_DAY}) reached. Next window opens in ${waitMinutes} minutes.`);
-  }
-
-  // Check minimum interval during active hours
-  if (lastPostTime) {
-    const timeSinceLastPost = Math.floor((now.getTime() - lastPostTime.getTime()) / (60 * 1000));
-    if (timeSinceLastPost < MIN_INTERVAL) {
-      throw new Error(`Please wait ${MIN_INTERVAL - timeSinceLastPost} minutes before next tweet (minimum interval during active hours).`);
-    }
   }
 
   const client = getTwitterClient();
@@ -131,15 +87,14 @@ export async function postTweet(text: string): Promise<void> {
   try {
     log(`Attempting to post tweet: "${text.substring(0, 20)}..."`, "twitter");
     await client.tweet(text);
-    lastPostTime = now;
-    dailyTweetCount++;
-    log(`Tweet posted successfully (${dailyTweetCount}/${TWEETS_PER_DAY} today, next available in ${MIN_INTERVAL} minutes)`, "twitter");
+    log("Tweet posted successfully", "twitter");
   } catch (error: any) {
+    // Only handle Twitter's own rate limits
     if (error.code === 429 || (error.data && error.data.status === 429)) {
-      const retryAfter = error.rateLimit?.reset ? new Date(error.rateLimit.reset * 1000) : new Date(now.getTime() + MIN_INTERVAL * 60 * 1000);
-      const waitTimeMinutes = Math.ceil((retryAfter.getTime() - now.getTime()) / (60 * 1000));
-      log(`Twitter rate limit hit, retry after ${waitTimeMinutes} minutes`, "twitter");
-      throw new Error(`Twitter's rate limit reached. Please try again in ${waitTimeMinutes} minutes.`);
+      const retryAfter = error.rateLimit?.reset ? error.rateLimit.reset * 1000 : Date.now() + 5 * 60 * 1000;
+      const waitMinutes = Math.ceil((retryAfter - Date.now()) / (60 * 1000));
+      log(`Twitter rate limit hit, retry after ${waitMinutes} minutes`, "twitter");
+      throw new Error(`Twitter's rate limit reached. Please try again in ${waitMinutes} minutes.`);
     }
     throw error;
   }
@@ -148,15 +103,8 @@ export async function postTweet(text: string): Promise<void> {
 export async function verifyTwitterCredentials(): Promise<boolean> {
   try {
     log("Verifying Twitter credentials...", "twitter");
-    
-    const client = new TwitterApi({
-      appKey: process.env.TWITTER_API_KEY!,
-      appSecret: process.env.TWITTER_API_SECRET!,
-      accessToken: process.env.TWITTER_ACCESS_TOKEN!,
-      accessSecret: process.env.TWITTER_ACCESS_SECRET!,
-    });
-
-    const user = await client.v2.me();
+    const client = getTwitterClient();
+    const user = await client.me();
     log(`Verified credentials for user: ${user.data.username}`, "twitter");
     return true;
   } catch (error) {
