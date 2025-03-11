@@ -53,7 +53,8 @@ export async function testAuth() {
 
 // Rate limit handling
 const MAX_RETRIES = 3;
-const INITIAL_RETRY_DELAY = 5 * 60 * 1000; // 5 minutes
+const INITIAL_RETRY_DELAY = 45 * 60 * 1000; // 45 minutes between posts
+const RATE_LIMIT_RESET = 15 * 60 * 1000; // 15 minutes for rate limit reset
 let lastPostTime = 0;
 let currentRetryCount = 0;
 let retryDelay = INITIAL_RETRY_DELAY;
@@ -62,9 +63,11 @@ export async function postTweet(text: string): Promise<void> {
   const now = Date.now();
   const timeSinceLastPost = now - lastPostTime;
   
-  // Ensure minimum 5 minutes between posts
+  // Ensure minimum interval between posts
   if (timeSinceLastPost < INITIAL_RETRY_DELAY) {
-    throw new Error(`Rate limit: Please wait ${Math.ceil((INITIAL_RETRY_DELAY - timeSinceLastPost) / 1000)} seconds before next post`);
+    const waitTime = Math.ceil((INITIAL_RETRY_DELAY - timeSinceLastPost) / 1000);
+    log(`Rate limit: Waiting ${waitTime} seconds before next post`, 'twitter');
+    throw new Error(`Rate limit: Please wait ${waitTime} seconds before next post`);
   }
 
   try {
@@ -83,10 +86,12 @@ export async function postTweet(text: string): Promise<void> {
       if (currentRetryCount >= MAX_RETRIES) {
         currentRetryCount = 0;
         retryDelay = INITIAL_RETRY_DELAY;
-        throw new Error(`Rate limit exceeded after ${MAX_RETRIES} retries. Please try again later.`);
+        log(`Rate limit exceeded after ${MAX_RETRIES} retries, resetting counters`, 'twitter');
+        throw new Error(`Rate limit exceeded. Please try again in ${Math.ceil(RATE_LIMIT_RESET / 1000 / 60)} minutes.`);
       }
-      retryDelay *= 2; // Exponential backoff
-      throw new Error(`Rate limit hit. Next retry in ${retryDelay / 1000} seconds.`);
+      retryDelay = Math.max(RATE_LIMIT_RESET, retryDelay * 2); // Use at least 15 minutes for rate limit
+      log(`Rate limit hit, will retry in ${Math.ceil(retryDelay / 1000 / 60)} minutes`, 'twitter');
+      throw new Error(`Rate limit hit. Next retry in ${Math.ceil(retryDelay / 1000)} seconds.`);
     }
 
     log(`Failed to post tweet: ${error.message}`, 'twitter');

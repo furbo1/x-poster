@@ -158,6 +158,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const start = new Date(data.startTime);
       const end = new Date(data.endTime);
+      const now = new Date();
+
+      // Allow scheduling up to 2 years in advance
+      const maxDate = new Date();
+      maxDate.setFullYear(maxDate.getFullYear() + 2);
+      if (start > maxDate) {
+        return res.status(400).json({
+          message: "Start time cannot be more than 2 years in the future"
+        });
+      }
 
       if (start >= end) {
         return res.status(400).json({
@@ -165,7 +175,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      if (start < new Date()) {
+      if (start < now) {
         return res.status(400).json({
           message: "Start time must be in the future"
         });

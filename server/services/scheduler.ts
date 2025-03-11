@@ -72,15 +72,19 @@ export function startScheduler() {
       const startTime = new Date(config.startTime);
       const endTime = new Date(config.endTime);
 
+      log(`Current time: ${now.toISOString()}`, "scheduler");
+      log(`Schedule window: ${startTime.toISOString()} to ${endTime.toISOString()}`, "scheduler");
+      log(`Active hours: ${ACTIVE_HOURS.start}:00 to ${ACTIVE_HOURS.end}:${ACTIVE_HOURS.endMinutes}`, "scheduler");
+
       // Check if we're within the overall schedule window
       if (now < startTime || now > endTime) {
-        log("Current time is outside scheduled posting window", "scheduler");
+        log(`Current time is outside scheduled posting window (${now.toISOString()})`, "scheduler");
         return;
       }
 
       // Check if we're within active hours
       if (!isWithinActiveHours(now)) {
-        log("Current time is outside active hours (8am-23:55pm)", "scheduler");
+        log(`Current time is outside active hours (${now.getHours()}:${now.getMinutes()})`, "scheduler");
         return;
       }
 
@@ -93,11 +97,14 @@ export function startScheduler() {
 
       // Check if it's time to post
       if (!post.scheduledTime || now < new Date(post.scheduledTime)) {
-        log(`Next post scheduled for: ${post.scheduledTime}`, "scheduler");
+        const timeUntilPost = post.scheduledTime ? 
+          Math.round((new Date(post.scheduledTime).getTime() - now.getTime()) / (60 * 1000)) : 
+          0;
+        log(`Next post "${post.name}" scheduled for: ${post.scheduledTime} (in ${timeUntilPost} minutes)`, "scheduler");
         return;
       }
 
-      log(`Attempting to post tweet for listing: ${post.name}`, "scheduler");
+      log(`Attempting to post tweet for listing: ${post.name} (scheduled for ${post.scheduledTime})`, "scheduler");
 
       try {
         // Post to Twitter

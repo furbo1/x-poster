@@ -8,8 +8,9 @@ import { ACTIVE_HOURS, isWithinActiveHours } from "./services/scheduler";
 
 const MemoryStore = createMemoryStore(session);
 
+// In production, use /tmp which is always writable
 const DATA_FILE = process.env.NODE_ENV === "production" 
-  ? "/data/state.json"
+  ? "/tmp/state.json"
   : path.join(process.cwd(), "data/state.json");
 
 export interface IStorage {
