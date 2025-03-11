@@ -51,71 +51,76 @@ export async function testAuth() {
   }
 }
 
-// Rate limit handling
-const MAX_RETRIES = 3;
-const INITIAL_RETRY_DELAY = 45 * 60 * 1000; // 45 minutes between posts
-const RATE_LIMIT_RESET = 15 * 60 * 1000; // 15 minutes for rate limit reset
-let lastPostTime = 0;
-let currentRetryCount = 0;
-let retryDelay = INITIAL_RETRY_DELAY;
+// Rate limit tracking
+let lastPostTime: Date | null = null;
+let rateLimitResetTime: Date | null = null;
+
+const MIN_POST_INTERVAL = 45 * 60 * 1000; // 45 minutes in milliseconds
+const RATE_LIMIT_WINDOW = 3 * 60 * 60 * 1000; // 3 hours in milliseconds
 
 export async function postTweet(text: string): Promise<void> {
-  const now = Date.now();
-  const timeSinceLastPost = now - lastPostTime;
-  
-  // Ensure minimum interval between posts
-  if (timeSinceLastPost < INITIAL_RETRY_DELAY) {
-    const waitTime = Math.ceil((INITIAL_RETRY_DELAY - timeSinceLastPost) / 1000);
-    log(`Rate limit: Waiting ${waitTime} seconds before next post`, 'twitter');
-    throw new Error(`Rate limit: Please wait ${waitTime} seconds before next post`);
+  const now = new Date();
+
+  // Check if we're still in rate limit window
+  if (rateLimitResetTime && now < rateLimitResetTime) {
+    const waitTimeSeconds = Math.ceil((rateLimitResetTime.getTime() - now.getTime()) / 1000);
+    throw new Error(`Rate limit window active. Try again in ${waitTimeSeconds} seconds.`);
   }
 
+  // Ensure minimum interval between posts
+  if (lastPostTime) {
+    const timeSinceLastPost = now.getTime() - lastPostTime.getTime();
+    if (timeSinceLastPost < MIN_POST_INTERVAL) {
+      const waitTimeMinutes = Math.ceil((MIN_POST_INTERVAL - timeSinceLastPost) / (60 * 1000));
+      throw new Error(`Please wait ${waitTimeMinutes} minutes before posting again.`);
+    }
+  }
+
+  const client = new TwitterApi({
+    appKey: process.env.TWITTER_API_KEY!,
+    appSecret: process.env.TWITTER_API_SECRET!,
+    accessToken: process.env.TWITTER_ACCESS_TOKEN!,
+    accessSecret: process.env.TWITTER_ACCESS_SECRET!,
+  });
+
   try {
-    const client = getTwitterClient();
-    log(`Attempting to post tweet: "${text.substring(0, 20)}..."`, 'twitter');
-
-    // Post tweet using v2 API
-    await client.tweet(text);
+    log(`Attempting to post tweet: "${text.substring(0, 20)}..."`, "twitter");
+    await client.v2.tweet(text);
+    
+    // Update last post time on success
     lastPostTime = now;
-    currentRetryCount = 0;
-    retryDelay = INITIAL_RETRY_DELAY;
-    log(`Successfully posted tweet`, 'twitter');
+    rateLimitResetTime = null;
+    
+    log("Tweet posted successfully", "twitter");
   } catch (error: any) {
-    if (error.code === 429) { // Rate limit error
-      currentRetryCount++;
-      if (currentRetryCount >= MAX_RETRIES) {
-        currentRetryCount = 0;
-        retryDelay = INITIAL_RETRY_DELAY;
-        log(`Rate limit exceeded after ${MAX_RETRIES} retries, resetting counters`, 'twitter');
-        throw new Error(`Rate limit exceeded. Please try again in ${Math.ceil(RATE_LIMIT_RESET / 1000 / 60)} minutes.`);
-      }
-      retryDelay = Math.max(RATE_LIMIT_RESET, retryDelay * 2); // Use at least 15 minutes for rate limit
-      log(`Rate limit hit, will retry in ${Math.ceil(retryDelay / 1000 / 60)} minutes`, 'twitter');
-      throw new Error(`Rate limit hit. Next retry in ${Math.ceil(retryDelay / 1000)} seconds.`);
+    // Handle rate limit errors
+    if (error.code === 429 || (error.data && error.data.status === 429)) {
+      rateLimitResetTime = new Date(now.getTime() + RATE_LIMIT_WINDOW);
+      const waitTimeMinutes = Math.ceil(RATE_LIMIT_WINDOW / (60 * 1000));
+      log(`Rate limit hit, will retry in ${waitTimeMinutes} minutes`, "twitter");
+      throw new Error(`Rate limit hit. Next retry in ${RATE_LIMIT_WINDOW / 1000} seconds.`);
     }
-
-    log(`Failed to post tweet: ${error.message}`, 'twitter');
-    if (error.data) {
-      log(`Error details: ${JSON.stringify(error.data)}`, 'twitter');
-    }
+    
     throw error;
   }
 }
 
 export async function verifyTwitterCredentials(): Promise<boolean> {
   try {
-    const client = getTwitterClient();
-    log('Verifying Twitter credentials...', 'twitter');
+    log("Verifying Twitter credentials...", "twitter");
+    
+    const client = new TwitterApi({
+      appKey: process.env.TWITTER_API_KEY!,
+      appSecret: process.env.TWITTER_API_SECRET!,
+      accessToken: process.env.TWITTER_ACCESS_TOKEN!,
+      accessSecret: process.env.TWITTER_ACCESS_SECRET!,
+    });
 
-    // Use v2.me() which is supported by our access level
-    const user = await client.me();
-    log(`Verified credentials for user: ${user.data.username}`, 'twitter');
+    const user = await client.v2.me();
+    log(`Verified credentials for user: ${user.data.username}`, "twitter");
     return true;
-  } catch (error: any) {
-    log(`Credential verification failed: ${error.message}`, 'twitter');
-    if (error.data) {
-      log(`Error details: ${JSON.stringify(error.data)}`, 'twitter');
-    }
+  } catch (error) {
+    log(`Failed to verify Twitter credentials: ${error}`, "twitter");
     return false;
   }
 }
